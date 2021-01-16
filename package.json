@@ -1,0 +1,16 @@
+{
+  "name": "chisonnumber",
+  "version": "1.0.0",
+  "description": "full stack queue tracking app",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "keywords": [
+    "redis",
+    "socketio"
+  ],
+  "author": "Michael Salaverry",
+  "license": "MIT",
+  "dependencies": {}
+}
