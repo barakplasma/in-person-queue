@@ -7,6 +7,8 @@
   <title>Document</title>
   <script src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
     integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js" integrity="sha256-S7uAbnQ+Ibyfl7YvwFZOCIm38x7p1Iw/K4XU4A/mKcw=" crossorigin="anonymous"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="../index.js"></script>
 </head>
@@ -15,7 +17,8 @@
   <h1>HisunNumber!</h1>
   <h2>Message from your admin:</h2>
   <h3></h3>
-  <button onclick="iAmDone()">I'm Done</button>
+  <button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button>
+  <button onclick="refresh()">refresh</button>
   <button onclick="iAmDone()">quit</button>
 
   <h3>My position in the queue is: <span id="position-in-queue">...loading</span></h3>

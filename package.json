@@ -19,7 +19,6 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@types/socket.io-client": "^1.4.35",
     "nodemon": "^2.0.7"
   }
 }
