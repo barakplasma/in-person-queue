@@ -4,7 +4,7 @@
   "description": "full stack queue tracking app",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "start": "PORT=3000 REDIS_PORT=6379 REDIS_HOST=localhost nodemon ./server.js "
   },
   "keywords": [
     "redis",
@@ -12,5 +12,14 @@
   ],
   "author": "Michael Salaverry",
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "express": "^4.17.1",
+    "ioredis": "^4.19.4",
+    "socketio": "^1.0.0",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@types/socket.io-client": "^1.4.35",
+    "nodemon": "^2.0.7"
+  }
 }
