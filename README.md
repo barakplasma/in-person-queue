@@ -2,6 +2,10 @@
 
 # Deploying to your infrastructure
 
+You can configure shared paths from Docker -> Preferences... -> Resources -> File Sharing.
+for <full path to this folder>/chisonnumber/dokku
+
+
 You just need dokku. To get started with dokku locally
 ```sh
 docker pull dokku/dokku:0.22.
@@ -25,11 +29,11 @@ docker exec -it dokku bash
 
 then copy your ssh key to the dokku folder
 ```
-cp ~/.ssh/id_rsa.pub <full path to this folder>/chisonnumber/dokku/.ssh/
+cp ~/.ssh/id_rsa.pub <full path here>/chisonnumber/dokku/home/dokku/.ssh/
 ```
 
 ```
-ssh-keys:add <your use name> id_rsa.pub
+dokku ssh-keys:add <your username> /home/dokku/.ssh/id_rsa.pub
 ```
 
 create the dokku app
@@ -45,5 +49,5 @@ dokku redis:link lolipop chisonnumber
 ```
 
 ```
-git remote add dokku dokku@localhost:chisonnumber
+git remote add dokku ssh://dokku@localhost:3022/chisonnumber
 ```
