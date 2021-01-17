@@ -5,19 +5,21 @@ module.exports.connection = function (http) {
 
   io.on('connection', (socket) => {
     // console.log('a user connected');
+
     function updateQueueMembers(queue) {
-      socket.to(queue).emit('queue-changed');
+      socket.volatile.to(queue).emit('queue-changed');
     }
 
-    socket.on('get-my-position', async (queue, id) => {
-      const currentPosition = await getPosition(queue,id);
-      socket.emit('update-queue-position', {currentPosition});
+    socket.on('get-my-position', async (queue, userId, ack) => {
+      const currentPosition = await getPosition(queue, userId);
+      lastPosition = currentPosition;
+      console.log({EventName: 'get position', queue, userId, currentPosition});
+      ack({currentPosition});
     });
 
-    socket.on('add-user', (queue, id) => {
+    socket.on('add-user', (queue, userId) => {
       socket.join(queue);
-      addUserToQueue(queue, id);
-      updateQueueMembers(queue);
+      addUserToQueue(queue, userId);
     });
 
     socket.on('user-done', (queue, id) => {

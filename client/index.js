@@ -8,9 +8,9 @@ let userId;
 let queue;
 
 function getUserId() {
-  if (typeof userId == 'undefined') {
+  if (!userId) {
     const localUserId = localStorage.getItem('userId');
-    if (typeof localUserId == 'undefined') {
+    if (!localUserId) {
       userId = uuidv4();
       localStorage.setItem('userId', userId);
     } else {
@@ -21,14 +21,14 @@ function getUserId() {
 }
 
 function getQueue() {
-  if (typeof queue == 'undefined') {
+  if (!queue) {
     queue = location.pathname.split('/')[2];
   }
   return queue;
 }
 
 function addSelfToQueue() {
-  socket.emit('add-user', getQueue(), userId);
+  socket.emit('add-user', getQueue(), getUserId());
   document.querySelector('#join-queue').remove();
   socket.emit('queue-changed');
   watchForQueuePositionUpdates();
@@ -59,20 +59,22 @@ function createQueue() {
 }
 
 function refresh() {
-  socket.emit('get-my-position', getQueue(), userId);
+  socket.emit('get-my-position', getQueue(), getUserId(), updatePositionInDom);
 }
 
 function iAmDone() {
-  socket.emit('user-done', getQueue(), userId)
+  socket.emit('user-done', getQueue(), getUserId())
   location.pathname = '';
+}
+
+function updatePositionInDom(msg) {
+  const { currentPosition } = msg;
+  document.querySelector('#position-in-queue').innerHTML = currentPosition;
 }
 
 function watchForQueuePositionUpdates() {
   socket.on('queue-changed', () => {
     refresh();
   });
-  socket.on('update-queue-position', (msg) => {
-    const { currentPosition } = msg;
-    document.querySelector('#position-in-queue').innerHTML = currentPosition;
-  });
+  socket.on('update-queue-position', updatePositionInDom);
 }

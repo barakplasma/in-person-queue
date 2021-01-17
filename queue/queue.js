@@ -4,30 +4,42 @@ const REDIS_HOST = process.env.REDIS_HOST;
 
 const redis = new redisLib(REDIS_PORT, REDIS_HOST);
 
-async function addUserToQueue(queue, id) {
-  console.log({EventName: 'adding to queue', queue, id});
-  await redis.rpush(queue, id).then((res) => {
-    console.log({EventName: 'added to queue', queueLength: res, queue})
-  }).catch(console.error);
+async function addUserToQueue(queue, userId) {
+  console.log({EventName: 'adding to queue', queue, userId: userId});
+  const userNotAlreadyInList = await userNotInList(queue, userId);
+  if (userNotAlreadyInList) {
+    await redis.rpush(queue, userId).then((res) => {
+      console.log({EventName: 'added to queue', queueLength: res, queue, userId})
+    }).catch(console.error);
+  }
 }
 
-async function removeUserFromQueue(queue, id) {
-  console.log({EventName: 'removing from queue', queue, id})
-  await redis.lrem(queue, 1, id).then((res) => {
-    console.log({EventName: 'removed from queue', queueLength: res, queue})
+async function removeUserFromQueue(queue, userId) {
+  console.log({EventName: 'removing from queue', queue, userId})
+  await redis.lrem(queue, 1, userId).then((res) => {
+    console.log({EventName: 'removed from queue', queueLength: res, queue, userId})
   }).catch(console.error);
 }
 
 async function createQueue(queue) {
   console.log({EventName: 'creating a new queue', queue});
-  await redis.lpush(queue, 'Start Queue').then(res => {
+  await redis.lpush(queue, 'Start Queue').then(_ => {
     console.log({EventName: 'created queue', queue});
   }).catch(console.error);
 }
 
-async function getPosition(queue, id) {
-  console.log({EventName: 'getting position', queue, id});
-  return await redis.lpos(queue, id);
+async function userPosition(queue, userId) {
+  const position =await redis.lpos(queue, userId); 
+  return position;
+}
+
+async function userNotInList(queue, userId) {
+  return (await userPosition(queue, userId)) == null;
+}
+
+async function getPosition(queue, userId) {
+  console.log({EventName: 'getting position', queue, userId});
+  return userPosition(queue, userId);
 }
 
 module.exports = {
