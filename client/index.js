@@ -64,8 +64,6 @@ function getQueue() {
 function addSelfToQueue() {
   socket.emit('add-user', getQueue(), getUserId());
   removeJoinButtonIfAlreadyJoined();
-  socket.emit('queue-changed');
-  watchForQueuePositionUpdates();
 }
 
 function createQueue() {
@@ -97,8 +95,9 @@ function refresh() {
 }
 
 function iAmDone() {
-  socket.emit('user-done', getQueue(), getUserId())
-  location.href = `${location.protocol}//${location.host}`;
+  socket.emit('user-done', getQueue(), getUserId(), () => {
+    location.href = `${location.protocol}//${location.host}`;
+  })
 }
 
 function updatePositionInDom(msg) {
@@ -107,9 +106,5 @@ function updatePositionInDom(msg) {
   document.title = `Queue: ${currentPosition} - ${getUserId()}`;
 }
 
-function watchForQueuePositionUpdates() {
-  socket.on('queue-changed', () => {
-    refresh();
-  });
+  socket.on('queue-changed', refresh);
   socket.on('update-queue-position', updatePositionInDom);
-}
