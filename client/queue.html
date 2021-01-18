@@ -8,25 +8,51 @@
   <script src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
     integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js" integrity="sha256-S7uAbnQ+Ibyfl7YvwFZOCIm38x7p1Iw/K4XU4A/mKcw=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"
+    integrity="sha256-S7uAbnQ+Ibyfl7YvwFZOCIm38x7p1Iw/K4XU4A/mKcw=" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css">
   <script src="/socket.io/socket.io.js"></script>
   <script src="../index.js"></script>
 </head>
 
 <body>
-  <h1>HisunNumber!</h1>
-  <h2>Message from your admin:</h2>
-  <h3></h3>
-  <button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button>
-  <button onclick="refresh()">refresh</button>
-  <button onclick="iAmDone()">quit</button>
-
-  <h3>My position in the queue is: <span id="position-in-queue">...loading</span></h3>
-  <style>
-    body {
-      text-align: center;
-    }
-  </style>
+  <header>
+    <nav>
+      <ul>
+        <li>
+          About
+        </li>
+      </ul>
+    </nav>
+    <h1>HisunNumber</h1>
+  </header>
+  <!-- <button onclick="findQueue()">Look for a queue near me</button> -->
+  <main>
+    <section>
+      <h2>Message from your admin:</h2>
+      <hr>
+      <section>
+        <aside>
+          <h4>Join this queue</h4>
+          <button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button>
+        </aside>
+        <aside>
+          <h4>Refresh queue</h4>
+          <button onclick="refresh()">refresh</button>
+        </aside>
+        <aside>
+          <h4>Finish or quit the queue</h4>
+          <button onclick="iAmDone()">quit</button>
+        </aside>
+      </section>
+      <section>
+        <header>
+          <h3>My position in the queue is: </h3>
+          <h1 id="position-in-queue">...loading</h1>
+        </header>
+      </section>
+    </section>
+  </main>
 </body>
 
 </html>

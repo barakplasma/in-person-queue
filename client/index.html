@@ -7,19 +7,28 @@
   <title>Document</title>
   <script src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
     integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css">
   <script src="/socket.io/socket.io.js"></script>
   <script src="/index.js"></script>
 </head>
 
 <body>
-  <h1>HisunNumber!</h1>
+  <header>
+    <nav>
+      <ul>
+        <li>
+          About
+        </li>
+      </ul>
+    </nav>
+    <h1>HisunNumber</h1>
+  </header>
   <!-- <button onclick="findQueue()">Look for a queue near me</button> -->
-  <button onclick="createQueue()">Create queue at my current location</button>
-  <style>
-    body {
-      text-align: center;
-    }
-  </style>
+  <main>
+    <section>
+      <button onclick="createQueue();">Create queue at my current location</button>
+    </section>
+  </main>
 </body>
 
 </html>
