@@ -20,5 +20,11 @@
   },
   "devDependencies": {
     "nodemon": "^2.0.7"
-  }
+  },
+  "browserslist": [
+    "defaults",
+    "not IE 11",
+    "not dead",
+    "maintained node versions"
+  ]
 }
