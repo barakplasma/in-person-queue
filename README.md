@@ -1,4 +1,5 @@
 # HisoonNumber
+[Homepage](https://barakplasma.github.io/in-person-queue/client/)
 
 ## What is this?
 TL:DR; This is a full stack website & server **solution for enabling arbitrary administrators to create location based queues with real-time updates**.
