@@ -5,10 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
-  <script src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
-    integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"
+  <script defer src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"
     integrity="sha256-S7uAbnQ+Ibyfl7YvwFZOCIm38x7p1Iw/K4XU4A/mKcw=" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css">
   <script src="/socket.io/socket.io.js"></script>
@@ -32,9 +29,9 @@
       <h2>Message from your admin:</h2>
       <hr>
       <section>
-        <aside>
+        <aside id="join-queue">
           <h4>Join this queue</h4>
-          <button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button>
+          <button onclick="addSelfToQueue(); refresh();">Join Queue</button>
         </aside>
         <aside>
           <h4>Refresh queue</h4>
