@@ -1,7 +1,12 @@
 const { addUserToQueue, removeUserFromQueue, createQueue, getPosition } = require('../queue/queue');
 
 module.exports.connection = function (http) {
-  const io = require('socket.io')(http);
+  const io = require('socket.io')(http, {
+    cors: {
+      origin: "https://barakplasma.github.io",
+      methods: ["GET", "POST"]
+    }
+  });
 
   io.on('connection', (socket) => {
     socket.on('create-queue', createQueue);
