@@ -1,3 +1,4 @@
 dokku/*
 node_modules/
 *.pem
+.env

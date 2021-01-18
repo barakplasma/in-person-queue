@@ -1,6 +1,6 @@
 const redisLib = require('ioredis');
-const REDIS_PORT = process.env.REDIS_PORT;
-const REDIS_HOST = process.env.REDIS_HOST;
+const REDIS_PORT = process.env.REDIS_PORT || "6379";
+const REDIS_HOST = process.env.REDIS_HOST || "localhost";
 
 const redis = new redisLib(REDIS_PORT, REDIS_HOST);
 

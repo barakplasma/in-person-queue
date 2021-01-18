@@ -49,6 +49,16 @@ This project is built to be self-hosted. There are no cloud dependencies. You'll
 A $35 Raspberry Pi and a home internet connection can handle a significant amount of traffic, don't be afraid to use one.
 
 [TODO: Docker-compose.yml or setup script]
+## Environment Variables
+To deploy this, you will need a [.env](https://www.npmjs.com/package/dotenv) file like this or the corresponding environment variables
+```env
+PORT=3000
+REDIS_PORT=6379
+REDIS_HOST=localhost
+KEY=localhost-key.pem
+CERT=localhost-cert.pem
+CORS_ORIGIN=https://barakplasma.github.io
+```
 
 ## Development
 
@@ -66,6 +76,7 @@ Full stack. Vanilla HTML/Javascript/CSS front-end, and Node.js (Socket.io/Expres
 To enable real-time updates when the queue changes, this project is built on top of WebSockets via Socket.io. For consistancy and ease of development, any client-server communication which could be stuffed into `socket.emit()` was stuffed into `socket.emit()` and `socket.on()`. 
 
 The client website can be hosted as static files ANYWHERE, and this means this shouldn't be a SPA. To be beginner friendly and future proof, this was written without any frameworks, and using the web platform. Additionally, this was **intentionally** built without a bundler, minifier, or any kind of transpilation to reduce complexity and keep this simple to hack on. This comes at the expense of a tiny bit of performance, and that's ok. In my day-to-day, I am a React/Redux developer, and I know very well why I want this to stay simple. The CSS is an afterthought, so I went with MVP.css which was a fantastic choice for speed and accessibility.
+
 
 #### Keywords / Buzzwords
 * WebSockets

@@ -3,7 +3,7 @@ const { addUserToQueue, removeUserFromQueue, createQueue, getPosition } = requir
 module.exports.connection = function (server) {
   const io = require('socket.io')(server, {
     cors: {
-      origin: "https://barakplasma.github.io",
+      origin: process.env.CORS_ORIGIN || "https://barakplasma.github.io",
       methods: ["GET", "POST"],
     }
   });

@@ -8,13 +8,6 @@
       "type": "pwa-node",
       "request": "launch",
       "name": "Launch Program",
-      "env": {
-        "PORT": "3000",
-        "REDIS_PORT": "6379",
-        "REDIS_HOST": "localhost",
-        "KEY": "localhost-key.pem",
-        "CERT": "localhost-cert.pem",
-      },
       "skipFiles": [
         "<node_internals>/**"
       ],
