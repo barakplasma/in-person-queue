@@ -46,6 +46,7 @@ function getUserId() {
       userId = uuidv4();
       urlSearchParams.set('userId', userId);
       location.search = urlSearchParams;
+      document.title = `${userId}:`;
     } else {
       userId = urlUserId;
     }
@@ -103,6 +104,7 @@ function iAmDone() {
 function updatePositionInDom(msg) {
   const { currentPosition } = msg;
   document.querySelector('#position-in-queue').innerHTML = currentPosition;
+  document.title = `Queue: ${currentPosition} - ${getUserId()}`;
 }
 
 function watchForQueuePositionUpdates() {
