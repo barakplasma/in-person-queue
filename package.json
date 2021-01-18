@@ -4,8 +4,8 @@
   "description": "full stack queue tracking app",
   "main": "index.js",
   "scripts": {
-    "start": "PORT=3000 REDIS_PORT=6379 REDIS_HOST=localhost nodemon ./server.js",
-    "dev": "browser-sync start --proxy 'localhost:3000' --files 'client'"
+    "start": "PORT=3000 REDIS_PORT=6379 REDIS_HOST=localhost nodemon --ignore client/ ./server.js",
+    "front-end-dev": "browser-sync start --proxy 'localhost:3000' --files 'client'"
   },
   "keywords": [
     "redis",
