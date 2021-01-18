@@ -6,15 +6,28 @@ io;
 const socket = io();
 let userId;
 let queue;
+let urlSearchParams = new URLSearchParams(location.search);
+
+function removeJoinButton() {
+  if (urlSearchParams.has('userId')) {
+    let joinQueueEl = document.querySelector('#join-queue');
+    if (joinQueueEl) {
+      joinQueueEl.remove();
+    }
+  }
+}
+
+document.addEventListener("DOMContentLoaded", removeJoinButton);
 
 function getUserId() {
   if (!userId) {
-    const localUserId = localStorage.getItem('userId');
-    if (!localUserId) {
+    const urlUserId = urlSearchParams.get('userId');
+    if (!urlUserId) {
       userId = uuidv4();
-      localStorage.setItem('userId', userId);
+      urlSearchParams.set('userId', userId);
+      location.search = urlSearchParams;
     } else {
-      userId = localUserId;
+      userId = urlUserId;
     }
   }
   return userId;
@@ -29,7 +42,7 @@ function getQueue() {
 
 function addSelfToQueue() {
   socket.emit('add-user', getQueue(), getUserId());
-  document.querySelector('#join-queue').remove();
+  removeJoinButton();
   socket.emit('queue-changed');
   watchForQueuePositionUpdates();
 }
