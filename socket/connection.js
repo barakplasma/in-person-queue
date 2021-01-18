@@ -13,7 +13,7 @@ module.exports.connection = function (http) {
     socket.on('get-my-position', async (queue, userId, ack) => {
       const currentPosition = await getPosition(queue, userId);
       lastPosition = currentPosition;
-      ack({currentPosition});
+      ack({ currentPosition });
     });
 
     socket.on('add-user', (queue, userId) => {
@@ -30,7 +30,7 @@ module.exports.connection = function (http) {
     socket.on('create-queue', createQueue);
 
     socket.on('disconnect', () => {
-      
+
     });
   });
 }

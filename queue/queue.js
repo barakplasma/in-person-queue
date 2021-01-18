@@ -8,25 +8,25 @@ async function addUserToQueue(queue, userId) {
   const userNotAlreadyInList = await userNotInList(queue, userId);
   if (userNotAlreadyInList) {
     await redis.rpush(queue, userId).then((res) => {
-      console.log({EventName: 'added to queue', queueLength: res, queue, userId})
+      console.log({ EventName: 'added to queue', queueLength: res, queue, userId })
     }).catch(console.error);
   }
 }
 
 async function removeUserFromQueue(queue, userId) {
   await redis.lrem(queue, 1, userId).then((res) => {
-    console.log({EventName: 'removed from queue', queueLength: res, queue, userId})
+    console.log({ EventName: 'removed from queue', queueLength: res, queue, userId })
   }).catch(console.error);
 }
 
 async function createQueue(queue) {
   await redis.lpush(queue, 'Start Queue').then(_ => {
-    console.log({EventName: 'created queue', queue});
+    console.log({ EventName: 'created queue', queue });
   }).catch(console.error);
 }
 
 async function userPosition(queue, userId) {
-  const position = await redis.lpos(queue, userId); 
+  const position = await redis.lpos(queue, userId);
   return position;
 }
 

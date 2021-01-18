@@ -8,7 +8,8 @@
   <script defer src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
     integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css">
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js" integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
+    integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
   <script src="client.js"></script>
   <script type="text/javascript">
     // Single Page Apps for GitHub Pages
@@ -21,13 +22,13 @@
     // When the single page app is loaded further down in this file,
     // the correct url will be waiting in the browser's history for
     // the single page app to route accordingly.
-    (function(l) {
-      if (l.search[1] === '/' ) {
-        var decoded = l.search.slice(1).split('&').map(function(s) { 
+    (function (l) {
+      if (l.search[1] === '/') {
+        var decoded = l.search.slice(1).split('&').map(function (s) {
           return s.replace(/~and~/g, '&')
         }).join('?');
         window.history.replaceState(null, null,
-            l.pathname.slice(0, -1) + decoded + l.hash
+          l.pathname.slice(0, -1) + decoded + l.hash
         );
       }
     }(window.location))

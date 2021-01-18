@@ -7,8 +7,10 @@
   <title>Queue</title>
   <script defer src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"
     integrity="sha256-S7uAbnQ+Ibyfl7YvwFZOCIm38x7p1Iw/K4XU4A/mKcw=" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css">
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js" integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
+    integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o=" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
+    integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
   <script src="../client.js"></script>
 </head>
 
@@ -18,30 +20,30 @@
   </header>
   <!-- <button onclick="findQueue()">Look for a queue near me</button> -->
   <main>
+    <header>
+      <h4>Message from your admin:</h4>
+    </header>
+    <p id="admin-message"></p>
+    <section id="position-section">
       <header>
-        <h4>Message from your admin:</h4>
+        <h3>Queue Position</h3>
       </header>
-      <p id="admin-message"></p>
-      <section id="position-section">
-        <header>
-          <h3>Queue Position</h3>
-        </header>
-        <h1 id="position-in-queue">Not yet in queue</h1>
-      </section>
-      <section>
-        <nav>
-          <ul>
-            <li><button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button></li>
-          </ul>
-          <ul>
-            <li><button id="refresh-queue" onclick="refresh()">refresh</button></li>
-          </ul>
-          <ul>
-            <li><button onclick="iAmDone()">quit</button></li>
-          </ul>
-        </nav>
-      </section>
-      <hr>
+      <h1 id="position-in-queue">Not yet in queue</h1>
+    </section>
+    <section>
+      <nav>
+        <ul>
+          <li><button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button></li>
+        </ul>
+        <ul>
+          <li><button id="refresh-queue" onclick="refresh()">refresh</button></li>
+        </ul>
+        <ul>
+          <li><button onclick="iAmDone()">quit</button></li>
+        </ul>
+      </nav>
+    </section>
+    <hr>
   </main>
 </body>
 

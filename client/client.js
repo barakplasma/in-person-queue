@@ -32,7 +32,7 @@ function removeRefresh() {
 
 document.addEventListener("DOMContentLoaded", removeJoinButtonIfAlreadyJoined);
 document.addEventListener("DOMContentLoaded", () => {
-  if(hasUserId()) {
+  if (hasUserId()) {
     refresh();
   } else {
     removeRefresh()
@@ -79,7 +79,7 @@ function createQueue() {
       console.log(currentOpenLocationCode);
 
       socket.emit('create-queue', currentOpenLocationCode);
-      location.pathname = '/queue/' + currentOpenLocationCode;
+      location.pathname = `${location.pathname}queue/${currentOpenLocationCode}`;
     }
 
     function error() {
@@ -106,5 +106,5 @@ function updatePositionInDom(msg) {
   document.title = `Queue: ${currentPosition} - ${getUserId()}`;
 }
 
-  socket.on('queue-changed', refresh);
-  socket.on('update-queue-position', updatePositionInDom);
+socket.on('queue-changed', refresh);
+socket.on('update-queue-position', updatePositionInDom);
