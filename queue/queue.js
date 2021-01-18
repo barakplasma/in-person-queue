@@ -29,7 +29,7 @@ async function createQueue(queue) {
 }
 
 async function userPosition(queue, userId) {
-  const position =await redis.lpos(queue, userId); 
+  const position = await redis.lpos(queue, userId); 
   return position;
 }
 
