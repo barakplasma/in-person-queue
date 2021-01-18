@@ -6,7 +6,19 @@ io;
 let userId;
 let queue;
 let urlSearchParams = new URLSearchParams(location.search);
-const socket = io(location.href);
+let env = "test";
+let config = {
+    "socket.io server host": {
+      "prod": "xyz.com",
+      "test": "localhost:3000"
+    }[env]
+};
+
+const socket = io(
+  urlSearchParams.has('location') ?
+    `${config['socket.io server host']}/queue/${urlSearchParams.get('location')}`
+    : `${config['socket.io server host']}/`
+);
 
 function hasUserId() {
   return urlSearchParams.has('userId');
@@ -56,7 +68,14 @@ function getUserId() {
 
 function getQueue() {
   if (!queue) {
-    queue = location.pathname.split('/')[2];
+    const queueId = urlSearchParams.get('location');
+    if (!queueId) {
+      queue = uuidv4();
+      urlSearchParams.set('location', queue);
+      location.search = urlSearchParams;
+    } else {
+      queue = queueId;
+    }
   }
   return queue;
 }
@@ -64,6 +83,13 @@ function getQueue() {
 function addSelfToQueue() {
   socket.emit('add-user', getQueue(), getUserId());
   removeJoinButtonIfAlreadyJoined();
+}
+
+function gotoQueue(currentOpenLocationCode) {
+  let goto = new URL(location.href);
+  goto.pathname = `${location.pathname}queue.html`;
+  goto.search = `location=${currentOpenLocationCode}`;
+  location.href = goto.toString();
 }
 
 function createQueue() {
@@ -75,11 +101,8 @@ function createQueue() {
       const longitude = position.coords.longitude;
       const currentOpenLocationCode = OpenLocationCode.encode(latitude, longitude);
 
-      console.log(`Latitude: ${latitude} °, Longitude: ${longitude} °`);
-      console.log(currentOpenLocationCode);
-
       socket.emit('create-queue', currentOpenLocationCode);
-      location.pathname = `${location.pathname}queue/${currentOpenLocationCode}`;
+      gotoQueue(currentOpenLocationCode);
     }
 
     function error() {

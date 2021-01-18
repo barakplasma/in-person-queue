@@ -2,6 +2,11 @@ const { addUserToQueue, removeUserFromQueue, createQueue, getPosition } = requir
 
 module.exports.connection = function (http) {
   const io = require('socket.io')(http);
+
+  io.on('connection', (socket) => {
+    socket.on('create-queue', createQueue);
+  })
+
   // working '/queue/8G4P3RG3+JM'
   const namespaceSplitter = /^\/queue\/.+$/;
   const perQueueNamespace = io.of(namespaceSplitter);
@@ -26,8 +31,6 @@ module.exports.connection = function (http) {
       socket.broadcast.emit('queue-changed');
       ack();
     });
-
-    socket.on('create-queue', createQueue);
 
     socket.on('disconnect', () => {
 
