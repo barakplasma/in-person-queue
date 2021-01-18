@@ -12,7 +12,6 @@ module.exports.connection = function (server) {
     socket.on('create-queue', createQueue);
   })
 
-  // working '/queue/8G4P3RG3+JM'
   const namespaceSplitter = /^\/queue\/.+$/;
   const perQueueNamespace = io.of(namespaceSplitter);
 

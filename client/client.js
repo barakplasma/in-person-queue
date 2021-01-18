@@ -8,10 +8,10 @@ let queue;
 let urlSearchParams = new URLSearchParams(location.search);
 let env = "test";
 let config = {
-    "socket.io server host": {
-      "prod": "xyz.com",
-      "test": "localhost:3000"
-    }[env]
+  "socket.io server host": {
+    "prod": "xyz.com",
+    "test": "localhost:3000"
+  }[env]
 };
 
 const socket = io(
@@ -57,7 +57,7 @@ function getUserId() {
     if (!urlUserId) {
       const distinguishableCharacters = 'CDEHKMPRTUWXY012458'.split('');
       const lenDistinguishableCharacters = distinguishableCharacters.length;
-      userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc+distinguishableCharacters[n % lenDistinguishableCharacters], "");
+      userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], "");
       urlSearchParams.set('userId', userId);
       location.search = urlSearchParams;
       document.querySelector("#userId").innerHTML = userId;
@@ -71,13 +71,7 @@ function getUserId() {
 function getQueue() {
   if (!queue) {
     const queueId = urlSearchParams.get('location');
-    if (!queueId) {
-      queue = uuidv4();
-      urlSearchParams.set('location', queue);
-      location.search = urlSearchParams;
-    } else {
-      queue = queueId;
-    }
+    queue = queueId;
   }
   return queue;
 }

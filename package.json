@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server.js",
-    "back-end-dev": "PORT=3000 REDIS_PORT=6379 REDIS_HOST=localhost KEY=localhost-key.pem CERT=localhost-cert.pem nodemon --ignore client/ ./server.js",
-    "front-end-dev": "browser-sync start --proxy 'localhost:3000' --files 'client'"
+    "back-end-dev": "PORT=3000 REDIS_PORT=6379 REDIS_HOST=localhost KEY='localhost-key.pem' CERT='localhost-cert.pem' nodemon --ignore client/ ./server.js"
   },
   "keywords": [
     "redis",
@@ -17,11 +16,9 @@
   "dependencies": {
     "express": "^4.17.1",
     "ioredis": "^4.19.4",
-    "socket.io": "^3.1.0",
-    "uuid": "^8.3.2"
+    "socket.io": "^3.1.0"
   },
   "devDependencies": {
-    "browser-sync": "^2.26.13",
     "nodemon": "^2.0.7"
   }
 }
