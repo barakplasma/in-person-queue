@@ -2,35 +2,35 @@ const { addUserToQueue, removeUserFromQueue, createQueue, getPosition } = requir
 
 module.exports.connection = function (http) {
   const io = require('socket.io')(http);
+  // working '/queue/8G4P3RG3+JM'
+  const namespaceSplitter = /^\/queue\/.+$/;
+  const perQueueNamespace = io.of(namespaceSplitter);
 
-  io.on('connection', (socket) => {
-    // console.log('a user connected');
-
-    function updateQueueMembers(queue) {
-      socket.volatile.to(queue).emit('queue-changed');
-    }
+  perQueueNamespace.on('connection', (socket) => {
+    let userId;
+    let queue = socket.nsp.name.split('/')[2];
 
     socket.on('get-my-position', async (queue, userId, ack) => {
       const currentPosition = await getPosition(queue, userId);
       lastPosition = currentPosition;
-      console.log({EventName: 'get position', queue, userId, currentPosition});
       ack({currentPosition});
     });
 
     socket.on('add-user', (queue, userId) => {
-      socket.join(queue);
       addUserToQueue(queue, userId);
+      userId = userId;
     });
 
-    socket.on('user-done', (queue, id) => {
+    socket.on('user-done', (queue, id, ack) => {
       removeUserFromQueue(queue, id);
-      updateQueueMembers(queue);
+      socket.broadcast.emit('queue-changed');
+      ack();
     });
 
     socket.on('create-queue', createQueue);
 
     socket.on('disconnect', () => {
-      // console.log('a user disconnected');
+      
     });
   });
 }

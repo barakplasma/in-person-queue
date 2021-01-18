@@ -3,10 +3,10 @@
  */
 io;
 
-const socket = io();
 let userId;
 let queue;
 let urlSearchParams = new URLSearchParams(location.search);
+const socket = io(location.href);
 
 function hasUserId() {
   return urlSearchParams.has('userId');
