@@ -55,10 +55,12 @@ function getUserId() {
   if (!userId) {
     const urlUserId = urlSearchParams.get('userId');
     if (!urlUserId) {
-      userId = uuidv4();
+      const distinguishableCharacters = 'CDEHKMPRTUWXY012458'.split('');
+      const lenDistinguishableCharacters = distinguishableCharacters.length;
+      userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc+distinguishableCharacters[n % lenDistinguishableCharacters], "");
       urlSearchParams.set('userId', userId);
       location.search = urlSearchParams;
-      document.title = `${userId}:`;
+      document.querySelector("#userId").innerHTML = userId;
     } else {
       userId = urlUserId;
     }

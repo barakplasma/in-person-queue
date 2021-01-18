@@ -5,8 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Queue</title>
-  <script defer src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"
-    integrity="sha256-S7uAbnQ+Ibyfl7YvwFZOCIm38x7p1Iw/K4XU4A/mKcw=" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
     integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o=" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
@@ -18,7 +16,6 @@
   <header style="border-bottom: 1px solid black;">
     <h1>HisunNumber</h1>
   </header>
-  <!-- <button onclick="findQueue()">Look for a queue near me</button> -->
   <main>
     <header>
       <h4>Message from your admin:</h4>
@@ -29,6 +26,7 @@
         <h3>Queue Position</h3>
       </header>
       <h1 id="position-in-queue">Not yet in queue</h1>
+      <p id="userId"></p>
     </section>
     <section>
       <nav>
@@ -36,7 +34,7 @@
           <li><button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button></li>
         </ul>
         <ul>
-          <li><button id="refresh-queue" onclick="refresh()">refresh</button></li>
+          <li><button id="refresh-queue" onclick="refresh()">Refresh</button></li>
         </ul>
         <ul>
           <li><button onclick="iAmDone()">quit</button></li>
