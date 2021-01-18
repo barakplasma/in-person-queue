@@ -13,42 +13,35 @@
 </head>
 
 <body>
-  <header>
-    <nav>
-      <ul>
-        <li>
-          About
-        </li>
-      </ul>
-    </nav>
+  <header style="border-bottom: 1px solid black;">
     <h1>HisunNumber</h1>
   </header>
   <!-- <button onclick="findQueue()">Look for a queue near me</button> -->
   <main>
-    <section>
-      <h2>Message from your admin:</h2>
-      <hr>
-      <section>
-        <aside id="join-queue">
-          <h4>Join this queue</h4>
-          <button onclick="addSelfToQueue(); refresh();">Join Queue</button>
-        </aside>
-        <aside>
-          <h4>Refresh queue</h4>
-          <button onclick="refresh()">refresh</button>
-        </aside>
-        <aside>
-          <h4>Finish or quit the queue</h4>
-          <button onclick="iAmDone()">quit</button>
-        </aside>
-      </section>
-      <section>
+      <header>
+        <h4>Message from your admin:</h4>
+      </header>
+      <p id="admin-message"></p>
+      <section id="position-section">
         <header>
-          <h3>My position in the queue is: </h3>
-          <h1 id="position-in-queue">...loading</h1>
+          <h3>Queue Position</h3>
         </header>
+        <h1 id="position-in-queue">Not yet in queue</h1>
       </section>
-    </section>
+      <section>
+        <nav>
+          <ul>
+            <li><button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button></li>
+          </ul>
+          <ul>
+            <li><button id="refresh-queue" onclick="refresh()">refresh</button></li>
+          </ul>
+          <ul>
+            <li><button onclick="iAmDone()">quit</button></li>
+          </ul>
+        </nav>
+      </section>
+      <hr>
   </main>
 </body>
 

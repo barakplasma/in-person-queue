@@ -8,8 +8,12 @@ let userId;
 let queue;
 let urlSearchParams = new URLSearchParams(location.search);
 
-function removeJoinButton() {
-  if (urlSearchParams.has('userId')) {
+function hasUserId() {
+  return urlSearchParams.has('userId');
+}
+
+function removeJoinButtonIfAlreadyJoined() {
+  if (hasUserId()) {
     let joinQueueEl = document.querySelector('#join-queue');
     if (joinQueueEl) {
       joinQueueEl.remove();
@@ -17,7 +21,23 @@ function removeJoinButton() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", removeJoinButton);
+function removeRefresh() {
+  if (!hasUserId()) {
+    let refreshEl = document.querySelector('#refresh-queue');
+    if (refreshEl) {
+      refreshEl.remove();
+    }
+  }
+}
+
+document.addEventListener("DOMContentLoaded", removeJoinButtonIfAlreadyJoined);
+document.addEventListener("DOMContentLoaded", () => {
+  if(hasUserId()) {
+    refresh();
+  } else {
+    removeRefresh()
+  }
+});
 
 function getUserId() {
   if (!userId) {
@@ -42,7 +62,7 @@ function getQueue() {
 
 function addSelfToQueue() {
   socket.emit('add-user', getQueue(), getUserId());
-  removeJoinButton();
+  removeJoinButtonIfAlreadyJoined();
   socket.emit('queue-changed');
   watchForQueuePositionUpdates();
 }
@@ -77,7 +97,7 @@ function refresh() {
 
 function iAmDone() {
   socket.emit('user-done', getQueue(), getUserId())
-  location.pathname = '';
+  location.href = `${location.protocol}//${location.host}`;
 }
 
 function updatePositionInDom(msg) {
