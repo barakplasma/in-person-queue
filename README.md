@@ -1,4 +1,6 @@
-# HisoonNumber
+![Node.js CI](https://github.com/barakplasma/in-person-queue/workflows/Node.js%20CI/badge.svg)
+
+# in-person-queue
 [Homepage](https://barakplasma.github.io/in-person-queue/client/)
 
 ## What is this?
