@@ -47,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (hasUserId()) {
     refresh();
   } else {
-    removeRefresh()
+    firstLoad();
   }
 });
 
@@ -118,6 +118,17 @@ function iAmDone() {
   socket.emit('user-done', getQueue(), getUserId(), () => {
     location.href = `${location.protocol}//${location.host}`;
   })
+}
+
+function firstLoad() {
+  removeRefresh();
+  socket.emit('get-queue-length', getQueue(), updateQueueLength);
+  updateQueueLength();
+}
+
+function updateQueueLength(msg) {
+  const { queueLength } = msg;
+  document.querySelector('#queueLengthCount').innerHTML = queueLength;
 }
 
 function updatePositionInDom(msg) {

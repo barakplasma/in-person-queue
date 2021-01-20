@@ -45,7 +45,7 @@ describe('Chisonnumber', () => {
         await queue.createQueue('a');
         await queue.addUserToQueue('a', 'b')
         return queue.addUserToQueue('a', 'c').then(() => {
-          return queue._redis.zcard('a');
+          return queue.getQueueLength('a');
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(3);
@@ -58,11 +58,20 @@ describe('Chisonnumber', () => {
         await queue.addUserToQueue('a', 'b')
         await queue.addUserToQueue('a', 'c') // add a second time
         return queue.addUserToQueue('a', 'c').then(() => {
-          return queue._redis.zcard('a');
+          return queue.getQueueLength('a');
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(3);
           expect(console.log).toHaveBeenLastCalledWith({ EventName: 'user already in queue', "queue": "a", "userId": "c"})
+        })
+      })
+    })
+
+    describe('Get queue length', () => {
+      it('should add users and get the right count', async () => {
+        await queue.createQueue('a');
+        return queue.getQueueLength('a').then((countUsers) => {
+          expect(countUsers).toBe(1);
         })
       })
     })
@@ -72,7 +81,7 @@ describe('Chisonnumber', () => {
         await queue.createQueue('a');
         await queue.addUserToQueue('a', 'b')
         return queue.removeUserFromQueue('a', 'c').then(() => {
-          return queue._redis.zcard('a');
+          return queue.getQueueLength('a');
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(2);
@@ -84,7 +93,7 @@ describe('Chisonnumber', () => {
         await queue.addUserToQueue('a', 'b')
         await queue.addUserToQueue('a', 'c')
         return queue.removeUserFromQueue('a', 'd').then(() => {
-          return queue._redis.zcard('a');
+          return queue.getQueueLength('a');
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(3);
@@ -95,7 +104,7 @@ describe('Chisonnumber', () => {
         await queue.createQueue('a');
         await queue.removeUserFromQueue('a', 'Start Queue')
         return queue.removeUserFromQueue('a', 'd').then(() => {
-          return queue._redis.zcard('a');
+          return queue.getQueueLength('a');
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(0);

@@ -39,6 +39,11 @@ module.exports.connection = function (server) {
       ack();
     });
 
+    socket.on('get-queue-length', async (queue, ack) => {
+      const queueLength = await getQueueLength(queue);
+      ack({ queueLength });
+    });
+
     socket.on('disconnect', () => {
 
     });

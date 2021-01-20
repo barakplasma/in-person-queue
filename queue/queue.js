@@ -45,10 +45,16 @@ async function getPosition(queue, userId) {
   return position;
 }
 
+async function getQueueLength(queue) {
+  const queueLength = await redis.zcard(queue);
+  return queueLength;
+}
+
 module.exports = {
   addUserToQueue,
   removeUserFromQueue,
   createQueue,
   getPosition,
+  getQueueLength,
   _redis: redis,
 }
