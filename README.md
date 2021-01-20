@@ -50,6 +50,13 @@ This project is built to be self-hosted. There are no cloud dependencies. You'll
 
 A $35 Raspberry Pi and a home internet connection can handle a significant amount of traffic, don't be afraid to use one.
 
+A very easy way to get started is with flyctl (config is included in this repo). They have a generous free tier, and managed redis for you.
+```sh
+$ brew install superfly/tap/flyctl
+$ flyctl auth signup
+$ flyctl deploy
+```
+
 [TODO: Docker-compose.yml or setup script]
 ## Environment Variables
 To deploy this, you will need a [.env](https://www.npmjs.com/package/dotenv) file like this or the corresponding environment variables
@@ -57,9 +64,7 @@ To deploy this, you will need a [.env](https://www.npmjs.com/package/dotenv) fil
 PORT=3000
 REDIS_PORT=6379
 REDIS_HOST=localhost
-KEY=localhost-key.pem
-CERT=localhost-cert.pem
-CORS_ORIGIN=https://barakplasma.github.io
+CORS_ORIGIN='["localhost:3000","https://barakplasma.github.io"]'
 ```
 
 ## Development

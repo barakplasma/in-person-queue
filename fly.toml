@@ -9,7 +9,7 @@ kill_signal = "SIGINT"
 kill_timeout = 5
 
 [env]
-  CORS_ORIGIN = "https://chisoonnumber.fly.dev"
+  CORS_ORIGIN = '["https://chisoonnumber.fly.dev","https://barakplasma.github.io"]'
   NODE_ENV = "production"
 
 [[services]]
