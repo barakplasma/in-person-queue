@@ -70,15 +70,14 @@ function getUserId() {
 
 function getQueue() {
   if (!queue) {
-    const queueId = urlSearchParams.get('location');
-    queue = queueId;
+    const queueId = btoa(urlSearchParams.get('location'));
+    queue = { queueId };
   }
   return queue;
 }
 
 function addSelfToQueue() {
-  socket.emit('add-user', getQueue(), getUserId());
-  removeJoinButtonIfAlreadyJoined();
+  socket.emit('add-user', getQueue(), getUserId(), removeJoinButtonIfAlreadyJoined);
 }
 
 function gotoQueue(currentOpenLocationCode) {
@@ -96,8 +95,8 @@ function createQueue() {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
       const currentOpenLocationCode = OpenLocationCode.encode(latitude, longitude);
-
-      socket.emit('create-queue', currentOpenLocationCode, () => {
+      queue = { queueId: btoa(currentOpenLocationCode) };
+      socket.emit('create-queue', queue, () => {
         gotoQueue(currentOpenLocationCode);
       });
     }

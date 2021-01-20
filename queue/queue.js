@@ -7,12 +7,11 @@ const redis = new redisLib(process.env.NODE_ENV == "production" ? process.env.FL
 async function addUserToQueue(queue, userId) {
   const userNotInListYet = await userNotInList(queue, userId);
   if (userNotInListYet) {
-    const result = await redis.zrevrange(queue, 0, 0, "WITHSCORES");
-    console.log({ EventName: 'last person in queue', queue, result});
-    const userPosition = parseInt(result[1])+1;
-    return await redis.zadd(queue, [userPosition, userId])
+    const [endOfQueueUser, currentEndOfQueueScore] = await redis.zrevrange(queue, 0, 0, "WITHSCORES");
+    const endOfQueueScore = +currentEndOfQueueScore + 1;
+    return await redis.zadd(queue, [endOfQueueScore, userId])
       .then(() => {
-        console.log({ EventName: 'added to queue', queue, userId })
+        console.log({ EventName: 'added to queue', queue, userId, endOfQueueScore })
       })
   } else {
     let log = { EventName: 'user already in queue', queue, userId };
@@ -24,12 +23,12 @@ async function addUserToQueue(queue, userId) {
 async function removeUserFromQueue(queue, userId) {
   return await redis.zrem(queue, userId)
     .then((res) => {
-      console.log({ EventName: 'removed from queue', queueLength: res, queue, userId })
+      console.log({ EventName: 'removed from queue', removed: res, queue, userId })
     })
 }
 
 async function createQueue(queue) {
-  return await redis.zadd(queue, 0, 'Start Queue')
+  return await redis.zadd(queue, [1, 'Start Queue'])
     .then(_ => {
       console.log({ EventName: 'created queue', queue });
     })
