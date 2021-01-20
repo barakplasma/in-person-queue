@@ -97,8 +97,9 @@ function createQueue() {
       const longitude = position.coords.longitude;
       const currentOpenLocationCode = OpenLocationCode.encode(latitude, longitude);
 
-      socket.emit('create-queue', currentOpenLocationCode);
-      gotoQueue(currentOpenLocationCode);
+      socket.emit('create-queue', currentOpenLocationCode, () => {
+        gotoQueue(currentOpenLocationCode);
+      });
     }
 
     function error() {
