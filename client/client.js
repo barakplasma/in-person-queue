@@ -122,8 +122,9 @@ function iAmDone() {
 
 function firstLoad() {
   removeRefresh();
-  socket.emit('get-queue-length', getQueue(), updateQueueLength);
-  updateQueueLength();
+  if (document.querySelector('#queueLengthCount')) {
+    socket.emit('get-queue-length', getQueue(), updateQueueLength);
+  }
 }
 
 function updateQueueLength(msg) {
