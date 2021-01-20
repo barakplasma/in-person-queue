@@ -19,6 +19,8 @@ app.get('/queue/*', (_, res) => {
   res.sendFile(__dirname + '/client/queue.html');
 })
 
+app.route('/').all(static('client'));
+
 server.listen(PORT, () => {
   console.log('listening on *:'+PORT);
 });
