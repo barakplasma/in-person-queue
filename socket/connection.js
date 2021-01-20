@@ -1,4 +1,4 @@
-const { addUserToQueue, removeUserFromQueue, createQueue, getPosition } = require('../queue/queue');
+const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength } = require('../queue/queue');
 
 module.exports.connection = function (server) {
   const io = require('socket.io')(server, {
