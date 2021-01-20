@@ -10,11 +10,10 @@ async function addUserToQueue(queue, userId) {
     const result = await redis.zrevrange(queue, 0, 0, "WITHSCORES");
     console.log({ EventName: 'last person in queue', queue, result});
     const userPosition = parseInt(result[1])+1;
-    return await redis.zadd(queue, userPosition, userId)
+    return await redis.zadd(queue, [userPosition, userId])
       .then(() => {
         console.log({ EventName: 'added to queue', queue, userId })
       })
-      .catch(console.error);
   } else {
     let log = { EventName: 'user already in queue', queue, userId };
     console.log(log)
@@ -27,7 +26,6 @@ async function removeUserFromQueue(queue, userId) {
     .then((res) => {
       console.log({ EventName: 'removed from queue', queueLength: res, queue, userId })
     })
-    .catch(console.error);
 }
 
 async function createQueue(queue) {
@@ -35,7 +33,6 @@ async function createQueue(queue) {
     .then(_ => {
       console.log({ EventName: 'created queue', queue });
     })
-    .catch(console.error);
 }
 
 async function userNotInList(queue, userId) {
