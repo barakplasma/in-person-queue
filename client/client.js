@@ -24,12 +24,13 @@ function hasUserId() {
   return urlSearchParams.has('userId');
 }
 
-function removeJoinButtonIfAlreadyJoined() {
+function displayJoinedState() {
   if (hasUserId()) {
     let joinQueueEl = document.querySelector('#join-queue');
     if (joinQueueEl) {
       joinQueueEl.remove();
     }
+    displayUserId(getUserId());
   }
 }
 
@@ -42,13 +43,15 @@ function removeRefresh() {
   }
 }
 
-document.addEventListener("DOMContentLoaded", removeJoinButtonIfAlreadyJoined);
+document.addEventListener("DOMContentLoaded", displayJoinedState);
 document.addEventListener("DOMContentLoaded", () => {
   if (hasUserId()) {
-    refresh();
+    socket.on('queue-changed', refreshMyPosition);
+    refreshMyPosition();
   } else {
     firstLoad();
   }
+  refreshQueueLength();
 });
 
 function getUserId() {
@@ -60,7 +63,6 @@ function getUserId() {
       userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], "");
       urlSearchParams.set('userId', userId);
       location.search = urlSearchParams;
-      document.querySelector("#userId").innerHTML = userId;
     } else {
       userId = urlUserId;
     }
@@ -77,7 +79,7 @@ function getQueue() {
 }
 
 function addSelfToQueue() {
-  socket.emit('add-user', getQueue(), getUserId(), removeJoinButtonIfAlreadyJoined);
+  socket.emit('add-user', getQueue(), getUserId(), displayJoinedState);
 }
 
 function gotoQueue(currentOpenLocationCode) {
@@ -109,7 +111,7 @@ function createQueue() {
   }
 }
 
-function refresh() {
+function refreshMyPosition() {
   socket.emit('get-my-position', getQueue(), getUserId(), updatePositionInDom);
 }
 
@@ -119,23 +121,40 @@ function iAmDone() {
   })
 }
 
+function refreshQueueLength() {
+  socket.emit('get-queue-length', getQueue(), updateQueueLength);
+}
+function updateHTML(selector, value) {
+  document.querySelector(selector).innerHTML = value;
+}
+function isQueuePage() {
+  return document.querySelector('#queueLengthCount');
+}
+
+function displayLocation(location) {
+  updateHTML('#location', location);
+}
+
+function displayUserId(userId) {
+  updateHTML('#userId', userId);
+}
+
 function firstLoad() {
   removeRefresh();
-  if (document.querySelector('#queueLengthCount')) {
-    socket.emit('get-queue-length', getQueue(), updateQueueLength);
+  if (isQueuePage()) {
+    displayLocation(urlSearchParams.get('location'));
   }
 }
 
 function updateQueueLength(msg) {
   const { queueLength } = msg;
-  document.querySelector('#queueLengthCount').innerHTML = queueLength;
+  updateHTML('#queueLengthCount', queueLength);
 }
 
 function updatePositionInDom(msg) {
   const { currentPosition } = msg;
-  document.querySelector('#position-in-queue').innerHTML = currentPosition;
+  updateHTML('#position-in-queue', currentPosition);
   document.title = `Queue: ${currentPosition} - ${getUserId()}`;
 }
 
-socket.on('queue-changed', refresh);
 socket.on('update-queue-position', updatePositionInDom);

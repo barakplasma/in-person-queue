@@ -28,15 +28,15 @@
       </aside>
       <details>
         <summary>Details</summary>
-        <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span></p>
+        <p id="queueLengthContainer" onclick="refreshQueueLength()">Queue Length: <span id="queueLengthCount">N/A</span></p>
         <p id="userIdContainer">UserId: <span id="userId">N/A</span></p>
         <p id="locationContainer">Location: <a id="location">N/A</a></p>
       </details>
     </section>
     <section>
       <p>
-        <button id="join-queue" onclick="addSelfToQueue(); refresh();">Join Queue</button>
-        <button id="refresh-queue" onclick="refresh()">Refresh</button>
+        <button id="join-queue" onclick="addSelfToQueue(); refreshMyPosition();">Join Queue</button>
+        <button id="refresh-queue" onclick="refreshMyPosition()">Refresh</button>
         <button onclick="iAmDone()">Done</button>
       </p>
     </section>
