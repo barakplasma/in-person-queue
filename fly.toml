@@ -1,0 +1,33 @@
+# fly.toml file generated for chisoonnumber on 2021-01-20T16:30:56+02:00
+
+app = "chisoonnumber"
+
+[build]
+  builtin = "node"
+
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[env]
+  CORS_ORIGIN = "https://chisoonnumber.fly.dev"
+  NODE_ENV = "production"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = "80"
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = "443"
+
+  [[services.tcp_checks]]
+    interval = 10000
+    timeout = 2000
