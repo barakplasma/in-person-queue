@@ -21,7 +21,6 @@ module.exports.connection = function (server) {
 
     socket.on('get-my-position', async (queue, userId, ack) => {
       const currentPosition = await getPosition(queue, userId);
-      lastPosition = currentPosition;
       ack({ currentPosition });
     });
 
