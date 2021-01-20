@@ -75,6 +75,7 @@ function getQueue() {
     const queueId = btoa(urlSearchParams.get('location'));
     queue = { queueId };
   }
+  displayLocation(atob(queue.queueId));
   return queue;
 }
 
@@ -132,7 +133,8 @@ function isQueuePage() {
 }
 
 function displayLocation(location) {
-  updateHTML('#location', location);
+  const fixed = location.replace(' ', '+');
+  updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
 }
 
 function displayUserId(userId) {
