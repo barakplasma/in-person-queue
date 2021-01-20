@@ -9,7 +9,10 @@ module.exports.connection = function (server) {
   });
 
   io.on('connection', (socket) => {
-    socket.on('create-queue', createQueue);
+    socket.on('create-queue', async (queue, ack) => {
+      await createQueue(queue);
+      ack();
+    });
   })
 
   const namespaceSplitter = /^\/queue\/.+$/;
@@ -24,13 +27,14 @@ module.exports.connection = function (server) {
       ack({ currentPosition });
     });
 
-    socket.on('add-user', (queue, userId) => {
-      addUserToQueue(queue, userId);
+    socket.on('add-user', async (queue, userId, ack) => {
       userId = userId;
+      await addUserToQueue(queue, userId);
+      ack();
     });
 
-    socket.on('user-done', (queue, id, ack) => {
-      removeUserFromQueue(queue, id);
+    socket.on('user-done', async (queue, id, ack) => {
+      await removeUserFromQueue(queue, id);
       socket.broadcast.emit('queue-changed');
       ack();
     });
