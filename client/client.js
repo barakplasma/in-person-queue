@@ -6,11 +6,11 @@ io;
 let userId;
 let queue;
 let urlSearchParams = new URLSearchParams(location.search);
-let env = "test";
+let env = localStorage.getItem('env') || "prod";
 let config = {
   "socket.io server host": {
-    "prod": "xyz.com",
-    "test": "localhost:3000"
+    "prod": "chisoonnumber.fly.dev",
+    "test": localStorage.getItem('test host') || 'localhost:3000'
   }[env]
 };
 
