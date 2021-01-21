@@ -67,6 +67,14 @@ REDIS_HOST=localhost
 CORS_ORIGIN='["localhost:3000","https://barakplasma.github.io"]'
 ```
 
+To test in localhost, set the following localstorage keys on your localhost
+```env
+# which client.js config to use
+env=test
+# which socket.io test host to use (can be prod or localhost)
+"test host"="localhost:3000"
+```
+
 ## Development
 
 ## Goals
