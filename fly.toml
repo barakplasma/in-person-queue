@@ -8,6 +8,7 @@ kill_timeout = 5
 [env]
   CORS_ORIGIN = '["https://chisoonnumber.fly.dev","https://barakplasma.github.io"]'
   NODE_ENV = "production"
+  PORT = "8080"
 
 [[services]]
   internal_port = 8080

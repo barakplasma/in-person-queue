@@ -1,7 +1,13 @@
 ![Node.js CI](https://github.com/barakplasma/in-person-queue/workflows/Node.js%20CI/badge.svg)
+![Code Size](https://img.shields.io/github/languages/code-size/barakplasma/in-person-queue)
+![GitHub package.json version](https://img.shields.io/github/package-json/v/barakplasma/in-person-queue)
+![GitHub Repo stars](https://img.shields.io/github/stars/barakplasma/in-person-queue?style=social)
+![Website](https://img.shields.io/website?down_color=lightgrey&down_message=offline&up_color=blue&up_message=online&url=https%3A%2F%2Fbarakplasma.github.io%2Fin-person-queue%2Fclient%2F)
 
 # in-person-queue
-[Homepage](https://barakplasma.github.io/in-person-queue/client/)
+- [Live version](https://barakplasma.github.io/in-person-queue/client/)
+- [Repository](https://github.com/barakplasma/in-person-queue)
+- [Development](#development)
 
 ## What is this?
 TL:DR; This is a full stack website & server **solution for enabling arbitrary administrators to create location based queues with real-time updates**.
@@ -27,7 +33,7 @@ An intended use case of this project is to enable medical professionals, or the 
 
 ## User Guide
 
-[Implemented: Create queue] Navigate to an instance of HisoonNumber, such as https://barakplasma.github.io/in-person-queue/client/ and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
+[Implemented: Create queue] Navigate to an instance of HisoonNumber, such as [https://barakplasma.github.io/in-person-queue/client/](https://barakplasma.github.io/in-person-queue/client/) and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
 This prompts the browser to ask permission to do a geolocation check. This geolocation is used to generate an OpenLocationCode, which is used as the name of the queue. Only the queue admin must provide geolocation access. 
 
 [TODO: ADMIN URL]
@@ -57,27 +63,26 @@ $ flyctl auth signup
 $ flyctl deploy
 ```
 
-[TODO: Docker-compose.yml or setup script]
-## Environment Variables
-To deploy this, you will need a [.env](https://www.npmjs.com/package/dotenv) file like this or the corresponding environment variables
+See the [development](#development) section for more details on getting started locally
+
+### Environment Variables
+To deploy this, you might need a [.env](https://www.npmjs.com/package/dotenv) file like this or the corresponding environment variables
 ```env
 PORT=3000
+# NODE_ENV "development" | "production"
+NODE_ENV=development
+# optional if using REDIS_PORT REDIS_HOST
+FLY_REDIS_CACHE_URL=redis://localhost:6379
+# optional if using FLY_REDIS_CACHE_URL
 REDIS_PORT=6379
+# optional if using FLY_REDIS_CACHE_URL
 REDIS_HOST=localhost
 CORS_ORIGIN='["localhost:3000","https://barakplasma.github.io"]'
 ```
 
-To test in localhost, set the following localstorage keys on your localhost
-```env
-# which client.js config to use
-env=test
-# which socket.io test host to use (can be prod or localhost)
-"test host"="localhost:3000"
-```
-
 ## Development
 
-## Goals
+### Goals
 * The most important goal of this project is to enable an ordinary person to create a vaccine leftover queue extremely quickly and easily.
 * This project should stay SIMPLE to use and implement. I want any beginner to be able to fork/hack this project to fit their needs. The only simpler alternative to this project should be a paper and pencil.
 * The front end must be **accessible**, fast, and work on almost any MOBILE browser.
@@ -85,16 +90,37 @@ env=test
 * I respect DevOps, but this project should be NoOps. An operator should ideally be able to set it up on a brand new rasberry pi once and never login to it again. [TODO: Sensible defaults and limits]
 * Lighthouse scores above 90 in every category on mobile (currently 94 performance, 91 accessibility, and 100 best practices while connected to the websocket queue)
 
-## Technical Design
+### Technical Design
 Full stack. Vanilla HTML/Javascript/CSS front-end, and Node.js (Socket.io/Express) backend with a Redis datastore.
 
 To enable real-time updates when the queue changes, this project is built on top of WebSockets via Socket.io. For consistancy and ease of development, any client-server communication which could be stuffed into `socket.emit()` was stuffed into `socket.emit()` and `socket.on()`. 
 
 The client website can be hosted as static files ANYWHERE, and this means this shouldn't be a SPA. To be beginner friendly and future proof, this was written without any frameworks, and using the web platform. Additionally, this was **intentionally** built without a bundler, minifier, or any kind of transpilation to reduce complexity and keep this simple to hack on. This comes at the expense of a tiny bit of performance, and that's ok. In my day-to-day, I am a React/Redux developer, and I know very well why I want this to stay simple. The CSS is an afterthought, so I went with MVP.css which was a fantastic choice for speed and accessibility.
 
+### Getting started with localhost
+[Implemented: docker-compose.yml] All you need to do to get started using your localhost is 
+1. run `$ git clone https://github.com/barakplasma/in-person-queue.git`
+2. run `$ cd in-person-queue`
+3. run `$ docker-compose up` in this repository, or `$ npm install && npm start` with Redis running (and env vars set)
+4. visit `localhost:6363` (external port is configurable in the docker-compose.yml file)
+5. set your localhost environment variables there
+
+### Localhost Environment Variables
+To test in localhost, set the following localstorage keys on your localhost
+```env
+# which client.js config to use
+env=test
+# which socket.io test host to use (can be prod or localhost)
+"test host"="localhost:6363"
+```
+
+### Tests
+There are Jest based tests here, but you need to run Redis on the same host for them to pass.
 
 #### Keywords / Buzzwords
 * WebSockets
 * Socket.io
 * Redis
 * Vanilla.js
+* Docker
+* Fly.io
