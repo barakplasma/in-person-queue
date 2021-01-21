@@ -45,13 +45,15 @@ function removeRefresh() {
 
 document.addEventListener("DOMContentLoaded", displayJoinedState);
 document.addEventListener("DOMContentLoaded", () => {
-  if (hasUserId()) {
-    socket.on('queue-changed', refreshMyPosition);
-    refreshMyPosition();
-  } else {
-    firstLoad();
+  if (isQueuePage()) {
+    refreshQueueLength();
+    if (hasUserId()) {
+      socket.on('queue-changed', refreshMyPosition);
+      refreshMyPosition();
+    } else {
+      firstLoad();
+    }
   }
-  refreshQueueLength();
 });
 
 function getUserId() {
@@ -143,9 +145,6 @@ function displayUserId(userId) {
 
 function firstLoad() {
   removeRefresh();
-  if (isQueuePage()) {
-    displayLocation(urlSearchParams.get('location'));
-  }
 }
 
 function updateQueueLength(msg) {
