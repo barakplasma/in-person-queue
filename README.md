@@ -84,7 +84,7 @@ CORS_ORIGIN='["localhost:3000","https://barakplasma.github.io"]'
 
 ### Goals
 * The most important goal of this project is to enable an ordinary person to create a vaccine leftover queue extremely quickly and easily.
-* This project should stay SIMPLE to use and implement. I want any beginner to be able to fork/hack this project to fit their needs. The only simpler alternative to this project should be a paper and pencil.
+* This project should stay SIMPLE to use and implement. I want any beginner to be able to fork/hack this project to fit their needs. The only simpler alternative to this project should be a paper/pencil/clipboard and a loud voice. See http://boringtechnology.club/ for more details
 * The front end must be **accessible**, fast, and work on almost any MOBILE browser.
 * The backend should be easy to self-host, and scale nicely. The backend should be easy to host on a Raspberry Pi, a digital ocean droplet, or a full cluster on EC2 / K8s. This means the backend should be high performance, and simple.
 * I respect DevOps, but this project should be NoOps. An operator should ideally be able to set it up on a brand new rasberry pi once and never login to it again. [TODO: Sensible defaults and limits]
