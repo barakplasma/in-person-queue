@@ -1,6 +1,9 @@
 const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength } = require('../queue/queue');
 
 module.exports.connection = function (server) {
+  /**
+   * @type {import('socket.io').Server} io
+   */
   const io = require('socket.io')(server, {
     cors: {
       origin: JSON.parse(process.env.CORS_ORIGIN),
@@ -14,6 +17,23 @@ module.exports.connection = function (server) {
       ack();
     });
   })
+
+  const adminNamespace = /^\/admin\/.+$/;
+  const perQueueAdminNamespace = io.of(adminNamespace);
+
+  perQueueAdminNamespace.on('connection', (adminSocket) => {
+    adminSocket.on('connection', () => {
+      console.log('admin connected')
+    })
+  });
+
+
+  function checkAdminAuth(socket, next) {
+    const err = new Error("not authorized");
+    err.data = { content: "Please retry later" }; // additional details
+    next(err);
+  }
+  perQueueAdminNamespace.use(checkAdminAuth);
 
   const namespaceSplitter = /^\/queue\/.+$/;
   const perQueueNamespace = io.of(namespaceSplitter);

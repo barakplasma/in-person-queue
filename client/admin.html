@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Queue</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
+    integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o=" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
+    integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
+  <script src="admin.js"></script>
+</head>
+
+<body>
+  <p>HisoonNumber</p>
+  <main>
+    <section id="position-section">
+      <aside>
+        <h3>Current head of the queue</h3>
+        <p id="userIdContainer">UserId: <span id="userId">N/A</span></p>
+      </aside>
+    </section>
+    <section>
+      <p>
+        <button id="current-user-done" onclick="currentUserDone(); refreshQueue();">Current user done</button>
+        <button id="refresh-queue" onclick="refreshQueue()">Refresh</button>
+      </p>
+    </section>
+    <section>
+      <aside>
+        <p id="queueLengthContainer" onclick="refreshQueue()">Queue Length: <span id="queueLengthCount">N/A</span>
+        </p>
+        <p id="locationContainer">Location: <a id="location">N/A</a></p>
+      </aside>
+    </section>
+    <section>
+      <form action="">
+        <label for="edit-admin-message">Edit Admin Message:</label></summary>
+        <textarea id="edit-admin-message" rows="8" style="text-overflow: ellipsis; width: 90%; max-width: 90%; min-width: 90%;">Use this form to give your queue users some details on what this queue is for, what to do when it is their turn, and who you are.</textarea>
+        <button type="button" onclick="updateAdminMessage()">update admin message</button>
+      </form>
+    </section>
+    <style>
+      body {
+        text-align: center;
+      }
+    </style>
+    <!-- <footer><a onclick="iAmDone()">Quit queue admin</a></footer> -->
+  </main>
+</body>
+
+</html>
