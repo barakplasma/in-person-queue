@@ -74,9 +74,7 @@ NODE_ENV=development
 # optional if using REDIS_PORT REDIS_HOST
 FLY_REDIS_CACHE_URL=redis://localhost:6379
 # optional if using FLY_REDIS_CACHE_URL
-REDIS_PORT=6379
-# optional if using FLY_REDIS_CACHE_URL
-REDIS_HOST=localhost
+REDIS_HOST=localhost:6379
 CORS_ORIGIN='["localhost:3000","https://barakplasma.github.io"]'
 ```
 
@@ -114,8 +112,16 @@ env=test
 "test host"="localhost:6363"
 ```
 
+### Debug
+Debug is easiest when running from localhost and not in docker-compose.
+Start a local redis instance,
+```sh
+$ docker run --rm -it -p 6379:6379 --name some-redis redis:alpine
+```
+Then use VS-Code and launch program via debug panel.
+
 ### Tests
-There are Jest based tests here, but you need to run Redis on the same host for them to pass.
+There are Jest based tests here, but you need to run Redis on the same host for them to pass (like debug).
 
 #### Keywords / Buzzwords
 * WebSockets

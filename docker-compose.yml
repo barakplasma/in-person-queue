@@ -6,8 +6,9 @@ services:
       - 6379
   app:
     build: .
+    command: npm run back-end-dev
     volumes:
-      - ./:/app
+      - ./:/usr/src/app
     links:
       - redis
     depends_on:
@@ -15,6 +16,6 @@ services:
     ports:
       - 6363:8080
     environment:
-      - FLY_REDIS_CACHE_URL=redis://queue
-      - NODE_ENV=production
+      - REDIS_HOST=queue
+      - NODE_ENV=development
       - CORS_ORIGIN=["localhost:8080"] # optional if you don't have CORS involved

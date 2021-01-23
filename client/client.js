@@ -4,15 +4,6 @@
 io;
 
 let userId;
-let queue;
-let urlSearchParams = new URLSearchParams(location.search);
-let env = localStorage.getItem('env') || "prod";
-let config = {
-  "socket.io server host": {
-    "prod": "chisoonnumber.fly.dev",
-    "test": localStorage.getItem('test host') || 'localhost:3000'
-  }[env]
-};
 
 const socket = io(
   urlSearchParams.has('location') ?
@@ -72,27 +63,26 @@ function getUserId() {
   return userId;
 }
 
-function getQueue() {
-  if (!queue) {
-    const queueId = btoa(urlSearchParams.get('location'));
-    queue = { queueId };
-  }
-  displayLocation(atob(queue.queueId));
-  return queue;
-}
-
 function addSelfToQueue() {
   socket.emit('add-user', getQueue(), getUserId(), displayJoinedState);
 }
 
-function gotoQueue(currentOpenLocationCode) {
+function gotoPage(pageName, currentOpenLocationCode) {
   let goto = new URL(location.href);
-  goto.pathname = `${location.pathname}queue.html`;
+  goto.pathname = `${location.pathname}${pageName}.html`;
   goto.search = `location=${currentOpenLocationCode}`;
   location.href = goto.toString();
 }
 
-function createQueue() {
+function redirectToQueuePage(currentOpenLocationCode) {
+  gotoPage('queue', currentOpenLocationCode);
+}
+
+function redirectToAdminPage(currentOpenLocationCode) {
+  gotoPage('admin', currentOpenLocationCode);
+}
+
+function getLocationDecorator(callback) {
   if (!navigator.geolocation) {
     console.error('Geolocation is not supported by your browser');
   } else {
@@ -100,10 +90,8 @@ function createQueue() {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
       const currentOpenLocationCode = OpenLocationCode.encode(latitude, longitude);
-      queue = { queueId: btoa(currentOpenLocationCode) };
-      socket.emit('create-queue', queue, () => {
-        gotoQueue(currentOpenLocationCode);
-      });
+      queue = btoa(currentOpenLocationCode);
+      callback(queue)
     }
 
     function error() {
@@ -114,8 +102,24 @@ function createQueue() {
   }
 }
 
+function joinQueue() {
+  getLocationDecorator(() => {
+    socket.emit('join-queue', getQueue(), () => {
+      redirectToQueuePage(getQueue());
+    });
+  });
+}
+
+function createQueue() {
+  getLocationDecorator(() => {
+    socket.emit('create-queue', getQueue(), () => {
+      redirectToAdminPage(getQueue());
+    });
+  });
+}
+
 function refreshMyPosition() {
-  socket.emit('get-my-position', getQueue(), getUserId(), updatePositionInDom);
+  socket.emit('get-my-position', getQueue(), getUserId(), updatePositionAndQueueLength);
 }
 
 function iAmDone() {
@@ -127,16 +131,9 @@ function iAmDone() {
 function refreshQueueLength() {
   socket.emit('get-queue-length', getQueue(), updateQueueLength);
 }
-function updateHTML(selector, value) {
-  document.querySelector(selector).innerHTML = value;
-}
+
 function isQueuePage() {
   return document.querySelector('#queueLengthCount');
-}
-
-function displayLocation(location) {
-  const fixed = location.replace(' ', '+');
-  updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
 }
 
 function displayUserId(userId) {
@@ -145,6 +142,7 @@ function displayUserId(userId) {
 
 function firstLoad() {
   removeRefresh();
+  displayLocation();
 }
 
 function updateQueueLength(msg) {
@@ -152,10 +150,15 @@ function updateQueueLength(msg) {
   updateHTML('#queueLengthCount', queueLength);
 }
 
+function updatePositionAndQueueLength(msg) {
+  updatePositionInDom(msg);
+  updateQueueLength(msg);
+}
+
 function updatePositionInDom(msg) {
   const { currentPosition } = msg;
-  updateHTML('#position-in-queue', currentPosition);
-  document.title = `Queue: ${currentPosition} - ${getUserId()}`;
+  updateHTML('#position-in-queue', currentPosition + 1);
+  document.title = `Queue: ${currentPosition + 1} - ${getUserId()}`;
 }
 
 socket.on('update-queue-position', updatePositionInDom);

@@ -1,0 +1,12 @@
+# See https://docs.docker.com/compose/production/
+# docker-compose -f docker-compose.yml -f production.yml up -d
+
+services:
+  app:
+    restart: always
+    command: npm run start
+    ports:
+      - 80:8080
+    environment:
+      - NODE_ENV=production
+      - CORS_ORIGIN=["localhost:8080"] # optional if you don't have CORS involved

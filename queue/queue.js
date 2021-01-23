@@ -1,13 +1,12 @@
 const redisLib = require('ioredis');
-const REDIS_PORT = process.env.REDIS_PORT || "6379";
-const REDIS_HOST = process.env.REDIS_HOST || "localhost";
+const REDIS_HOST = process.env.REDIS_HOST || "localhost:6379";
 
-const redis = new redisLib(process.env.NODE_ENV == "production" ? process.env.FLY_REDIS_CACHE_URL : `redis://${REDIS_HOST}:${REDIS_PORT}`);
+const redis = new redisLib(process.env.NODE_ENV == "production" ? process.env.FLY_REDIS_CACHE_URL : `redis://${REDIS_HOST}`);
 
 async function addUserToQueue(queue, userId) {
   const userNotInListYet = await userNotInList(queue, userId);
   if (userNotInListYet) {
-    const [endOfQueueUser, currentEndOfQueueScore] = await redis.zrevrange(queue, 0, 0, "WITHSCORES");
+    const [endOfQueueUser = "no one in queue", currentEndOfQueueScore = 0] = await redis.zrevrange(queue, 0, 0, "WITHSCORES");
     const endOfQueueScore = +currentEndOfQueueScore + 1;
     return await redis.zadd(queue, [endOfQueueScore, userId])
       .then(() => {
@@ -49,11 +48,22 @@ async function getQueueLength(queue) {
   return queueLength;
 }
 
+async function getHeadOfQueue(queue) {
+  const headOfQueue = await redis.zrange(queue, 0, 0);
+  return headOfQueue[0];
+}
+
+async function shiftQueue(queue) {
+  return await redis.zpopmin(queue);
+}
+
 module.exports = {
   addUserToQueue,
   removeUserFromQueue,
   createQueue,
   getPosition,
   getQueueLength,
+  getHeadOfQueue,
+  shiftQueue,
   _redis: redis,
 }

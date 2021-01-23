@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server.js",
-    "back-end-dev": "nodemon --ignore client/ ./server.js",
+    "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
     "test": "jest"
   },
   "keywords": [

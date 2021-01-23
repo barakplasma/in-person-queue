@@ -1,10 +1,11 @@
 describe('Chisonnumber', () => {
   describe('Queue', () => {
     let queue = require('../queue/queue');
-    let testQueueId = { queueId: '8F2C4M6J+9V' }
+    let testQueueId = '8F2C4M6J+9V'
 
     beforeAll(() => {
       console.log = jest.fn();
+      jest.spyOn(queue._redis, 'zadd');
     })
     afterAll(() => {
       queue._redis.quit();
@@ -13,12 +14,14 @@ describe('Chisonnumber', () => {
     beforeEach(() => {
       queue._redis.del(testQueueId);
       console.log.mockClear();
+      queue._redis.zadd.mockClear();
     })
     describe('Create Queue', () => {
       it('should be able to create a queue', () => {
         return queue.createQueue(testQueueId).then((res) => {
           expect(res).toBe(undefined)
           expect(console.log).toHaveBeenLastCalledWith({ EventName: 'created queue', queue: testQueueId })
+          expect(queue._redis.zadd).toHaveBeenLastCalledWith(testQueueId, [1, "Start Queue"])
         })
       })
     })
@@ -42,6 +45,42 @@ describe('Chisonnumber', () => {
       })
     })
 
+    describe('Get Head of Queue', () => {
+      it('should find head of new queue', async () => {
+        await queue.createQueue(testQueueId);
+        return queue.getHeadOfQueue(testQueueId).then(res => {
+          expect(res).toBe("Start Queue");
+        })
+      })
+      it('should find head of old queue', async () => {
+        await queue.createQueue(testQueueId);
+        await queue.addUserToQueue(testQueueId, 'b');
+        await queue.addUserToQueue(testQueueId, 'c');
+        await queue.addUserToQueue(testQueueId, 'd');
+        await queue.addUserToQueue(testQueueId, 'e');
+        await queue.removeUserFromQueue(testQueueId, "Start Queue");
+        await queue.removeUserFromQueue(testQueueId, "c");
+        await queue.removeUserFromQueue(testQueueId, "b");
+        return queue.getHeadOfQueue(testQueueId).then(res => {
+          expect(res).toBe("d");
+        })
+      })
+    })
+
+    describe('Current User Done', () => {
+      it('should mark first user in queue done and next user as current head of queue', async () => {
+        await queue.createQueue(testQueueId);
+        await queue.addUserToQueue(testQueueId, 'b');
+        await queue.addUserToQueue(testQueueId, 'c');
+        await queue.addUserToQueue(testQueueId, 'd');
+        expect(await queue.getHeadOfQueue(testQueueId)).toBe("Start Queue");
+        expect(await queue.shiftQueue(testQueueId)).toStrictEqual(["Start Queue", "1"]);
+        return queue.getHeadOfQueue(testQueueId).then(res => {
+          expect(res).toBe("b");
+        })
+      })
+    })
+
     describe('Add user to queue', () => {
       it('should add users and get the right count', async () => {
         await queue.createQueue(testQueueId);
@@ -51,7 +90,7 @@ describe('Chisonnumber', () => {
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(3);
-          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'added to queue', "queue": {"queueId": "8F2C4M6J+9V"}, "userId": "c", "endOfQueueScore": 3 })
+          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'added to queue', "queue": "8F2C4M6J+9V", "userId": "c", "endOfQueueScore": 3 })
         })
       })
 
@@ -64,7 +103,7 @@ describe('Chisonnumber', () => {
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(3);
-          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'user already in queue', "queue": {"queueId": "8F2C4M6J+9V"}, "userId": "c" })
+          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'user already in queue', "queue": "8F2C4M6J+9V", "userId": "c" })
         })
       })
     })

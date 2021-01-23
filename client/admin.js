@@ -3,15 +3,6 @@
  */
 io;
 
-let urlSearchParams = new URLSearchParams(location.search);
-let env = localStorage.getItem('env') || "prod";
-let config = {
-  "socket.io server host": {
-    "prod": "chisoonnumber.fly.dev",
-    "test": localStorage.getItem('test host') || 'localhost:3000'
-  }[env]
-};
-
 const socket = io(
   urlSearchParams.has('location') ?
     `${config['socket.io server host']}/admin/${urlSearchParams.get('location')}`
@@ -33,10 +24,24 @@ function updateAdminMessage() {
 
 function currentUserDone() {
   if (window.confirm("confirm current user is done?")) {
-    socket.emit("current-user-done")
+    socket.emit("current-user-done", getQueue(), refreshQueue)
   }
 }
 
+document.addEventListener("DOMContentLoaded", () => {
+  refreshQueue();
+});
+
 function refreshQueue() {
-  socket.emit("refresh-queue")
+  socket.emit("refresh-queue", getQueue(), ({ headOfQueue, queueLength }) => {
+    updateHTML('#userId', headOfQueue || "Queue is empty");
+    updateHTML('#queueLengthCount', queueLength);
+    displayLocation();
+  })
+}
+
+function iAmDone() {
+  socket.emit('admin-done', getQueue(), () => {
+    location.href = `${location.protocol}//${location.host}`;
+  })
 }
