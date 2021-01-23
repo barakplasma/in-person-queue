@@ -10,7 +10,8 @@
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
     integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
   <script src="sharedClientUtils.js"></script>
-  <script src="client.js"></script>
+  <script src="queue.js"></script>
+  <script src="user.js"></script>
 </head>
 
 <body>
@@ -37,7 +38,7 @@
     <section>
       <p>
         <button id="join-queue" onclick="addSelfToQueue(); refreshMyPosition();">Join Queue</button>
-        <button id="refresh-queue" onclick="refreshMyPosition()">Refresh</button>
+        <button id="refresh-queue" onclick="refreshMyPosition();">Refresh</button>
         <button onclick="iAmDone()">Done</button>
       </p>
     </section>

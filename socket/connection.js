@@ -1,7 +1,8 @@
 const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue } = require('../queue/queue');
 
-function decodeQueue(queueInBase64) {
-  return Buffer.from(queueInBase64, 'base64').toString('utf8');
+function decodeQueue(queue) {
+  // console.log('decode: ', queue);
+  return Buffer.from(queue, 'base64').toString('utf8');
 }
 
 function catchError(err) {
@@ -23,102 +24,156 @@ module.exports.connection = function (server) {
   io.on('connection', (socket) => {
     socket.on('create-queue', async (queue, ack) => {
       await createQueue(decodeQueue(queue));
-      ack(decodeQueue(queue));
-    });
-
-    socket.on('join-queue', async (queue, ack) => {
-      ack(decodeQueue(queue));
+      ack();
     });
   })
 
-  const adminNamespace = /^\/admin\/.+$/;
-  const perQueueAdminNamespace = io.of(adminNamespace);
+  const roomNamespace = io.of('/room');
+  /**
+   * 
+   * @param {import('socket.io').Socket} roomSocket 
+   */
+  const roomConnection = (roomSocket) => {
+    let queueCache;
+    function log(msg, other) {
+      console.log(Object.assign({
+        EventMessage: msg,
+        queue: queueCache,
+      }, other))
+    }
+
+    roomSocket.on('join-queue', async (queue, type) => {
+      queueCache = decodeQueue(queue);
+      roomSocket.join(queueCache);
+      log('person joined', {type});
+    })
+
+    async function refreshQueue() {
+      const queueLength = await getQueueLength(queueCache);
+      roomSocket.to(queueCache).emit('refresh-queue', queueLength);
+      log('refreshed-queue', { queueLength })
+    }
+
+    roomSocket.on('get-queue-length', async (ack) => {
+      const queueLength = await getQueueLength(queueCache);
+      ack(queueLength);
+    });
+
+    roomSocket.on('add-to-queue', refreshQueue);
+
+    roomSocket.on('remove-from-queue', refreshQueue);
+  }
+
+  roomNamespace.on('connection', roomConnection);
+
+  const adminNamespace = io.of('/admin');
 
   /**
    * 
    * @param {import('socket.io').Socket} adminSocket 
    */
   const adminConnection = (adminSocket) => {
-    let queue = decodeQueue(adminSocket.nsp.name.split('/')[2])
-    console.log({ EventMessage: 'admin connected', queue });
-    adminSocket.join(queue);
-
-    const updateQueueForAdmin = async (queue, ack) => {
-      const queueLength = await getQueueLength(decodeQueue(queue));
-      const headOfQueue = await getHeadOfQueue(decodeQueue(queue));
-      ack({ queueLength, headOfQueue });
+    let queueCache;
+    function log(msg, other) {
+      console.log(Object.assign({
+        EventMessage: msg,
+        queue: queueCache,
+      }, other))
     }
+
+    const updateQueueForAdmin = async (ack) => {
+      const headOfQueue = await getHeadOfQueue(queueCache);
+      ack({ headOfQueue });
+      log('admin refresh', { headOfQueue })
+    }
+
+    adminSocket.on("update-admin-message", (text, ack) => {
+      ack();
+      log('received admin message update', { text });
+    })
 
     adminSocket.on('refresh-queue', updateQueueForAdmin);
 
-    adminSocket.on('admin-done', async (queue, ack) => {
-      perQueueNamespace.to(queue).emit('admin-done');
-      console.log({ EventMessage: 'admin quit', queue: decodeQueue(queue) })
+    adminSocket.on('admin-done', async (ack) => {
       ack();
+      log('admin quit')
     })
 
-    adminSocket.on("current-user-done", async (queue, ack) => {
-      const userRemoved = await shiftQueue(decodeQueue(queue));
+    adminSocket.on('join-queue', (queue) => {
+      queueCache = decodeQueue(queue);
+    });
+
+    adminSocket.on("current-user-done", async (ack) => {
+      const userRemoved = await shiftQueue(queueCache);
       ack();
-      perQueueNamespace.to(queue).emit('queue-changed');
-      console.log({ EventMessage: 'current-user-done', queue: decodeQueue(queue), userRemoved });
+      log('current-user-done', { userRemoved });
     })
   }
-  perQueueAdminNamespace.on('connection', adminConnection);
+  adminNamespace.on('connection', adminConnection);
 
 
+  /**
+   * 
+   * @param {import('socket.io').Socket} socket 
+   * @param {Function} next 
+   */
   function checkAdminAuth(socket, next) {
     const err = new Error("not authorized");
     err.data = { content: "Please retry later" }; // additional details
-    next(err);
+    // console.log({req: socket.request});
+    next();
   }
 
-  // perQueueAdminNamespace.use(checkAdminAuth);
+  adminNamespace.use(checkAdminAuth);
 
-  const namespaceSplitter = /^\/queue\/.+$/;
-  const perQueueNamespace = io.of(namespaceSplitter);
+  const userNamespace = io.of('/user');
   /**
    * 
    * @param {import('socket.io').Socket} userSocket 
    */
   const userConnection = (userSocket) => {
-    let userId;
-    let queue = decodeQueue(userSocket.nsp.name.split('/')[2]);
-    console.log({ EventMessage: 'user connected', queue });
-    userSocket.join(queue);
+    let userCache;
+    let queueCache;
 
-    const updateMyPosition = async (queue, userId, ack) => {
-      const currentPosition = await getPosition(decodeQueue(queue), userId);
-      const queueLength = await getQueueLength(decodeQueue(queue));
-      ack({ currentPosition, queueLength });
+    function log(msg, other) {
+      console.log(Object.assign({
+        EventMessage: msg,
+        queue: queueCache,
+        userId: userCache,
+      }, other))
+    }
+
+    userSocket.on('join-queue', (queue, userId) => {
+      userCache = userId;
+      queueCache = decodeQueue(queue);
+      log('user-joined-queue')
+    });
+
+    const updateMyPosition = async (ack) => {
+      const currentPosition = await getPosition(queueCache, userCache);
+      ack({ currentPosition });
+      log('user-update-position', { currentPosition })
     };
 
     userSocket.on('get-my-position', updateMyPosition);
 
     userSocket.on('add-user', async (queue, userId, ack) => {
-      userId = userId;
-      await addUserToQueue(decodeQueue(queue), userId);
-      perQueueAdminNamespace.to(queue).emit('queue-changed')
+      queueCache = decodeQueue(queue);
+      userCache = userId;
+      await addUserToQueue(queueCache, userCache);
       ack();
+      log('user-self-add')
     });
 
-    userSocket.on('queue-changed', () => updateMyPosition(queue, userId));
-
-    userSocket.on('user-done', async (queue, id, ack) => {
-      await removeUserFromQueue(decodeQueue(queue), id);
-      userSocket.broadcast.emit('queue-changed');
-      perQueueAdminNamespace.to(queue).emit('queue-changed')
+    userSocket.on('user-done', async (ack) => {
+      await removeUserFromQueue(queueCache, userCache);
       ack();
-    });
-
-    userSocket.on('get-queue-length', async (queue, ack) => {
-      const queueLength = await getQueueLength(decodeQueue(queue));
-      ack({ queueLength });
+      log('user-self-done')
     });
 
     userSocket.on('disconnect', () => {
 
     })
   };
-  perQueueNamespace.on('connection', userConnection);
+  userNamespace.on('connection', userConnection);
 }

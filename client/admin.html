@@ -10,6 +10,7 @@
   <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
     integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
   <script src="sharedClientUtils.js"></script>
+  <script src="queue.js"></script>
   <script src="admin.js"></script>
 </head>
 
@@ -25,12 +26,12 @@
     <section>
       <p>
         <button id="current-user-done" onclick="currentUserDone(); refreshQueue();">Current user done</button>
-        <button id="refresh-queue" onclick="refreshQueue()">Refresh</button>
+        <button id="refresh-queue" onclick="refreshAdminPage()">Refresh</button>
       </p>
     </section>
     <section>
       <aside>
-        <p id="queueLengthContainer" onclick="refreshQueue()">Queue Length: <span id="queueLengthCount">N/A</span>
+        <p id="queueLengthContainer" onclick="refreshAdminPage()">Queue Length: <span id="queueLengthCount">N/A</span>
         </p>
         <p id="locationContainer">Location: <a id="location">N/A</a></p>
       </aside>
