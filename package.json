@@ -13,7 +13,10 @@
     "socketio"
   ],
   "author": "Michael Salaverry",
-  "license": "MIT",
+  "license": "GPL-V3",
+  "repository": {
+    "url": "https://github.com/barakplasma/in-person-queue"
+  },
   "dependencies": {
     "@godaddy/terminus": "^4.5.0",
     "dotenv": "^8.2.0",
