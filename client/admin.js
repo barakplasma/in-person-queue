@@ -3,7 +3,7 @@
  */
 io;
 
-const socket = io(
+const adminSocket = io(
   urlSearchParams.has('location') ?
     `${config['socket.io server host']}/admin/${urlSearchParams.get('location')}`
     : `${config['socket.io server host']}/`
@@ -17,14 +17,14 @@ function getAdminMessageText() {
 
 function updateAdminMessage() {
   const text = getAdminMessageText();
-  socket.emit("update-admin-message", (ack) => {
+  adminSocket.emit("update-admin-message", (text, ack) => {
     window.alert('updated admin message');
   })
 }
 
 function currentUserDone() {
   if (window.confirm("confirm current user is done?")) {
-    socket.emit("current-user-done", getQueue(), refreshQueue)
+    adminSocket.emit("current-user-done", getQueue(), refreshQueue)
   }
 }
 
@@ -32,8 +32,12 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshQueue();
 });
 
+adminSocket.on('queue-changed', () => {
+  refreshQueue();
+})
+
 function refreshQueue() {
-  socket.emit("refresh-queue", getQueue(), ({ headOfQueue, queueLength }) => {
+  adminSocket.emit("refresh-queue", getQueue(), ({ headOfQueue, queueLength }) => {
     updateHTML('#userId', headOfQueue || "Queue is empty");
     updateHTML('#queueLengthCount', queueLength);
     displayLocation();
@@ -41,7 +45,7 @@ function refreshQueue() {
 }
 
 function iAmDone() {
-  socket.emit('admin-done', getQueue(), () => {
+  adminSocket.emit('admin-done', getQueue(), () => {
     location.href = `${location.protocol}//${location.host}`;
   })
 }
