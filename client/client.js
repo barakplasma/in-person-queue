@@ -157,8 +157,9 @@ function updatePositionAndQueueLength(msg) {
 
 function updatePositionInDom(msg) {
   const { currentPosition } = msg;
-  updateHTML('#position-in-queue', currentPosition + 1);
-  document.title = `Queue: ${currentPosition + 1} - ${getUserId()}`;
+  const displayPosition = currentPosition === null ? "Not in queue" : currentPosition + 1;
+  updateHTML('#position-in-queue', displayPosition);
+  document.title = `Queue: ${displayPosition} - ${getUserId()}`;
 }
 
 socket.on('update-queue-position', updatePositionInDom);
