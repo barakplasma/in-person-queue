@@ -44,7 +44,7 @@ const terminusOptions = {
         getStatusOfUrl(new URL(`http://localhost:${PORT}/`)),
         getStatusOfUrl(new URL(`http://localhost:${PORT}/admin.html`)),
         getStatusOfUrl(new URL(`http://localhost:${PORT}/queue.html`)),
-        _redis.status === 'ready' ? Promise.resolve(_redis.status) : Promise.reject(new Error(_redis.status))
+        _redis.status === 'ready' ? Promise.resolve({ 'redis status': _redis.status }) : Promise.reject(new Error(`redis status: ${_redis.status}`))
       ]);
     }
   }
