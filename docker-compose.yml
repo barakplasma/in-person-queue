@@ -4,6 +4,8 @@ services:
     container_name: queue
     expose:
       - 6379
+    ports:
+      - 6379:6379
   app:
     build: .
     command: npm run back-end-dev
