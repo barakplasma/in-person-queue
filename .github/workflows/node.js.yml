@@ -20,6 +20,8 @@ jobs:
 
     steps:
     - uses: supercharge/redis-github-action@1.1.0
+    - name: Run Playwright tests
+      uses: microsoft/playwright-github-action@v1.4.4
     - uses: actions/checkout@v2
     - name: Use Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v1
