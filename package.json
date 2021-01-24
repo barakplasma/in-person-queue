@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server.js",
-    "start-server": "node ./server.js",
+    "start-server": "PORT=6363 node ./server.js",
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
     "test": "jest",
     "test:e2e": "node ./test/e2e.test.js",
