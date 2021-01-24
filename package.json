@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node ./server.js",
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
-    "test": "jest --testPathPattern queue",
-    "test:e2e": "jest --testPathPattern e2e"
+    "test": "jest --testPathPattern queue.test.js",
+    "test:e2e": "jest --testPathPattern e2e.test.js"
   },
   "keywords": [
     "redis",
