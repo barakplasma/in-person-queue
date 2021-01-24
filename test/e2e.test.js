@@ -47,20 +47,20 @@ describe('Admin page', () => {
       }, userIdSelector, { timeout: 1000 })
       const currentUser = await page.innerText(userIdSelector);
       expect(currentUser).toBe("Start Queue");
-    })
+    }, 10 * 1000)
     it('should have right queue length', async () => {
 
       // Check for admin page to have the right queue length
       await page.waitForSelector(queueLengthSelector);
       const queueLength = await page.innerText(queueLengthSelector);
       expect(queueLength).toBe("1");
-    })
+    }, 10 * 1000)
 
     it('should have the right location', async () => {
       // Check admin page for location
       await page.waitForSelector(locationSelector);
       const location = await page.innerText(locationSelector);
       expect(location).toBe("9GFGX828+2M")
-    })
+    }, 10 * 1000)
   })
 })
