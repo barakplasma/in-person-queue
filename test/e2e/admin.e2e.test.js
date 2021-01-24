@@ -1,4 +1,4 @@
-const { firefox } = require('playwright');
+const { setupE2E } = require('./sharedE2E');
 const expect = require('expect');
 
 const userIdSelector = '#userId';
@@ -6,39 +6,24 @@ const queueLengthSelector = '#queueLengthCount';
 const locationSelector = '#location > a:nth-child(1)';
 
 describe('Admin page', () => {
-  let browser, page, context;
+  let e2e = setupE2E();
+  /**
+   * @type {import('playwright').Page} page
+   */
+  let page;
+
   beforeAll(async () => {
-    browser = await firefox.launch({
-      headless: true
-    });
-    context = await browser.newContext();
-    await context.grantPermissions(['geolocation']);
-    await context.setGeolocation({ latitude: 59.95, longitude: 30.31667 });
-
-    // Open new page
-    page = await context.newPage();
-
-    // Go to http://localhost:6363/
-    await page.goto('http://localhost:6363/');
-
-    await page.evaluate(() => {
-      window.localStorage.setItem('env', 'test');
-      window.localStorage.setItem('test host', 'localhost:6363');
-    });
-
-    await page.reload();
+    page = (await e2e).page;
 
     // Click 'Create a new queue at my current location']
     await page.click('//button[normalize-space(.)=\'Create a new queue at my current location\']');
+  })
 
-    // await page.waitForTimeout(50000)
-  })
   afterAll(async () => {
-    // Close page
-    await page.close();
-    await context.close();
-    await browser.close();
+    let {shutdownE2E} = (await e2e);
+    await shutdownE2E()
   })
+
   describe('should have correct start up elements', () => {
     it('should have user id', async () => {
       await page.waitForSelector(userIdSelector);
@@ -47,20 +32,18 @@ describe('Admin page', () => {
       }, userIdSelector, { timeout: 1000 })
       const currentUser = await page.innerText(userIdSelector);
       expect(currentUser).toBe("Start Queue");
-    }, 10 * 1000)
-    it('should have right queue length', async () => {
+    })
 
-      // Check for admin page to have the right queue length
+    it('should have right queue length', async () => {
       await page.waitForSelector(queueLengthSelector);
       const queueLength = await page.innerText(queueLengthSelector);
       expect(queueLength).toBe("1");
-    }, 10 * 1000)
+    })
 
     it('should have the right location', async () => {
-      // Check admin page for location
       await page.waitForSelector(locationSelector);
       const location = await page.innerText(locationSelector);
       expect(location).toBe("9GFGX828+2M")
-    }, 10 * 1000)
+    })
   })
 })
