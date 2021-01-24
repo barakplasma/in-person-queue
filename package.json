@@ -5,9 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server.js",
+    "start-server": "node ./server.js",
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
     "test": "jest",
-    "test:e2e": "node ./test/e2e.test.js"
+    "test:e2e": "node ./test/e2e.test.js",
+    "test:ci": "start-server-and-test start-server http://localhost:6363 test"
   },
   "keywords": [
     "redis",
@@ -29,7 +31,8 @@
     "@types/jest": "^26.0.20",
     "jest": "^26.6.3",
     "nodemon": "^2.0.7",
-    "playwright": "^1.8.0"
+    "playwright": "^1.8.0",
+    "start-server-and-test": "^1.11.7"
   },
   "browserslist": [
     "defaults",
