@@ -3,7 +3,7 @@ const expect = require('expect');
 
 const userIdSelector = '#userId';
 const queueLengthSelector = '#queueLengthCount';
-const locationSelector = '#location > a:nth-child(1)';
+const locationSelector = '#location';
 
 describe('Admin page', () => {
   let e2e = setupE2E();

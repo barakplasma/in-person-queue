@@ -48,7 +48,7 @@ describe('User page', () => {
     it('should have the right location', async () => {
       // await page.waitForSelector(locationSelector);
       const location = await page.innerText(locationSelector);
-      expect(location).toBe("9GFGX828+2M")
+      expect(location).toBe("9GFGX828+2M") 
     })
   })
 })
