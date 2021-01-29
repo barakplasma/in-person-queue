@@ -12,12 +12,6 @@ require('./socket/connection').connection(server);
 
 app.use(static('client'))
 
-app.get('/queue/*', (_, res) => {
-  res.sendFile(__dirname + '/client/queue.html');
-})
-
-app.route('/').all(static('client'));
-
 createTerminus(server, terminusOptions);
 
 server.listen(PORT, () => {
