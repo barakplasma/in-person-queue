@@ -16,7 +16,7 @@ module.exports.connection = function (server) {
    */
   const io = require('socket.io')(server, {
     cors: {
-      origin: JSON.parse(process.env.CORS_ORIGIN),
+      origin: JSON.parse(process.env.CORS_ORIGIN || '["localhost:8080"]'),
       methods: ["GET", "POST"],
     }
   });
@@ -45,7 +45,7 @@ module.exports.connection = function (server) {
     roomSocket.on('join-queue', async (queue, type) => {
       queueCache = decodeQueue(queue);
       roomSocket.join(queueCache);
-      log('person joined', {type});
+      log('person joined', { type });
     })
 
     async function refreshQueue() {

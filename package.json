@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node ./server.js",
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
-    "test": "jest"
+    "test": "jest --testPathPattern queue.test.js",
+    "test:e2e": "jest --testPathPattern e2e.test.js"
   },
   "keywords": [
     "redis",
@@ -28,6 +29,9 @@
     "@types/jest": "^26.0.20",
     "jest": "^26.6.3",
     "nodemon": "^2.0.7"
+  },
+  "optionalDependencies": {
+    "playwright": "^1.8.0"
   },
   "browserslist": [
     "defaults",
