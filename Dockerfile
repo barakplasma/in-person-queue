@@ -1,10 +1,9 @@
 FROM node:lts-alpine
+ARG NODE_ENV_ARG=production
+ENV NODE_ENV=$NODE_ENV_ARG
 WORKDIR /usr/src/app
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
 COPY package*.json ./
-RUN npm install
+RUN npm ci --no-optional
 COPY . .
 ENV PORT=8080
 EXPOSE 8080
