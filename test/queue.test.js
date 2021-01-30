@@ -90,7 +90,7 @@ describe('Chisonnumber', () => {
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(3);
-          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'added to queue', "queue": "8F2C4M6J+9V", "userId": "c", "endOfQueueScore": 3 })
+          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'added to queue', "queue": testQueueId, "userId": "c", "endOfQueueScore": 3 })
         })
       })
 
@@ -103,7 +103,7 @@ describe('Chisonnumber', () => {
         }).then(countUsers => {
           // first user is "Start Queue"
           expect(countUsers).toBe(3);
-          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'user already in queue', "queue": "8F2C4M6J+9V", "userId": "c" })
+          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'user already in queue', "queue": testQueueId, "userId": "c" })
         })
       })
     })
