@@ -20,7 +20,7 @@ describe('Admin page', () => {
   })
 
   afterAll(async () => {
-    let {shutdownE2E} = (await e2e);
+    let { shutdownE2E } = (await e2e);
     await shutdownE2E()
   })
 
@@ -44,6 +44,11 @@ describe('Admin page', () => {
       await page.waitForSelector(locationSelector);
       const location = await page.innerText(locationSelector);
       expect(location).toBe("9GFGX828+2M")
+    })
+
+    it('should have location and password in the url', async () => {
+      const url = await page.url();
+      expect(url).toMatch(/location=OUdGR1g4MjgrMk0%3D&password=.*/);
     })
   })
 })

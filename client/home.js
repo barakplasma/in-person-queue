@@ -5,10 +5,13 @@ io;
 
 const homeSocket = io(`${config['socket.io server host']}/`);
 
-function gotoPage(pageName, currentOpenLocationCode) {
+function gotoPage(pageName, currentOpenLocationCode, password = null) {
   let goto = new URL(location.href);
   goto.pathname = `${location.pathname}${pageName}.html`;
-  goto.search = `location=${currentOpenLocationCode}`;
+  goto.search = new URLSearchParams({
+    location: currentOpenLocationCode,
+    password: password ? password : '',
+  }).toString()
   location.href = goto.toString();
 }
 
@@ -16,8 +19,8 @@ function redirectToQueuePage(q) {
   gotoPage('queue', q);
 }
 
-function redirectToAdminPage(q) {
-  gotoPage('admin', q);
+function redirectToAdminPage(q, password) {
+  gotoPage('admin', q, password);
 }
 
 function getLocation() {
@@ -48,8 +51,9 @@ function redirectToQueue() {
 
 function createQueue() {
   getLocation().then((queue) => {
-    homeSocket.emit('create-queue', queue, () => {
-      redirectToAdminPage(queue);
+    let password = btoa(window.crypto.getRandomValues(new Uint8Array(6)));
+    homeSocket.emit('create-queue', queue, password, () => {
+      redirectToAdminPage(queue, password);
     });
   });
 }

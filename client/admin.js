@@ -5,7 +5,12 @@ io;
 
 const adminSocket = io(urlSearchParams.has('location') ?
 `${config['socket.io server host']}/admin`
-: `${config['socket.io server host']}/`);
+: `${config['socket.io server host']}/`, {
+  auth: {
+    queue: urlSearchParams.get('location'),
+    password: urlSearchParams.get('password')
+  }
+});
 
 function getAdminMessageText() {
   const el = document.querySelector('#edit-admin-message');

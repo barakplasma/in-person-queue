@@ -26,7 +26,8 @@ async function removeUserFromQueue(queue, userId) {
     })
 }
 
-async function createQueue(queue) {
+async function createQueue(queue, password) {
+  await redis.hset('authorizations', {[queue]: password});
   return await redis.zadd(queue, [1, 'Start Queue'])
     .then(_ => {
       console.log({ EventName: 'created queue', queue });
@@ -57,6 +58,10 @@ async function shiftQueue(queue) {
   return await redis.zpopmin(queue);
 }
 
+async function checkAuthForQueue({queue, password}) {
+  return await redis.hget('authorizations', queue) === password;
+}
+
 module.exports = {
   addUserToQueue,
   removeUserFromQueue,
@@ -65,5 +70,6 @@ module.exports = {
   getQueueLength,
   getHeadOfQueue,
   shiftQueue,
+  checkAuthForQueue,
   _redis: redis,
 }

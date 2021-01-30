@@ -1,13 +1,8 @@
-const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue } = require('../queue/queue');
+const crypto = require('crypto');
+const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue } = require('../queue/queue');
 
 function decodeQueue(queue) {
-  // console.log('decode: ', queue);
-  return Buffer.from(queue, 'base64').toString('utf8');
-}
-
-function catchError(err) {
-  console.error(err);
-  throw err;
+  return 'q:' + Buffer.from(queue, 'base64').toString('utf8');
 }
 
 module.exports.connection = function (server) {
@@ -22,8 +17,8 @@ module.exports.connection = function (server) {
   });
 
   io.on('connection', (socket) => {
-    socket.on('create-queue', async (queue, ack) => {
-      await createQueue(decodeQueue(queue));
+    socket.on('create-queue', async (queue, password, ack) => {
+      await createQueue(decodeQueue(queue), password);
       ack();
     });
   })
@@ -117,14 +112,17 @@ module.exports.connection = function (server) {
    * @param {import('socket.io').Socket} socket 
    * @param {Function} next 
    */
-  function checkAdminAuth(socket, next) {
-    const err = new Error("not authorized");
-    err.data = { content: "Please retry later" }; // additional details
-    // console.log({req: socket.request});
-    next();
+  function checkAdminAuthMiddleware(socket, next) {
+    if (socket.handshake.auth.queue && socket.handshake.auth.queue && checkAuthForQueue(socket.handshake.auth)) {
+      console.log(socket.handshake.auth)
+      next();
+    } else {
+      const err = new Error("not authorized");
+      err.data = { content: "Please retry later" }; // additional details
+    }
   }
 
-  adminNamespace.use(checkAdminAuth);
+  adminNamespace.use(checkAdminAuthMiddleware);
 
   const userNamespace = io.of('/user');
   /**
