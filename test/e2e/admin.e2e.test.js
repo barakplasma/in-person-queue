@@ -4,6 +4,7 @@ const expect = require('expect');
 const userIdSelector = '#userId';
 const queueLengthSelector = '#queueLengthCount';
 const locationSelector = '#location';
+const submitAdminMessageSelector = '#submit-admin-message';
 
 describe('Admin page', () => {
   let e2e = setupE2E();
@@ -49,6 +50,14 @@ describe('Admin page', () => {
     it('should have location and password in the url', async () => {
       const url = await page.url();
       expect(url).toMatch(/location=OUdGR1g4MjgrMk0%3D&password=.*/);
+    })
+
+    it('should be able to update admin message', async () => {
+      await page.waitForSelector(submitAdminMessageSelector);
+      await page.click(submitAdminMessageSelector);
+      await page.waitForEvent("dialog").then(dialog=> {
+        expect(dialog.message()).toMatch('updated admin message');
+      });
     })
   })
 })
