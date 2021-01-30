@@ -20,7 +20,7 @@ describe('Admin page', () => {
   })
 
   afterAll(async () => {
-    let {shutdownE2E} = (await e2e);
+    let { shutdownE2E } = (await e2e);
     await shutdownE2E()
   })
 
