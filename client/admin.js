@@ -4,8 +4,8 @@
 io;
 
 const adminSocket = io(urlSearchParams.has('location') ?
-`${config['socket.io server host']}/admin`
-: `${config['socket.io server host']}/`, {
+  `${config['socket.io server host']}/admin`
+  : `${config['socket.io server host']}/`, {
   auth: {
     queue: urlSearchParams.get('location'),
     password: urlSearchParams.get('password')
@@ -13,15 +13,19 @@ const adminSocket = io(urlSearchParams.has('location') ?
 });
 
 function getAdminMessageText() {
-  const el = document.querySelector('#edit-admin-message');
-  const text = el && el.textContent;
-  return text;
+  /**
+   * @type {HTMLTextAreaElement}
+   */
+  const el = document.querySelector('textarea[name="edit-admin-message"]');
+  const html = el && el.value;
+  return html;
 }
 
 function updateAdminMessage() {
   const text = getAdminMessageText();
   adminSocket.emit("update-admin-message", text, () => {
     window.alert('updated admin message');
+    roomSocket.emit('refresh-queue');
   })
 }
 
@@ -29,8 +33,8 @@ function currentUserDone() {
   if (window.confirm("confirm current user is done?")) {
     adminSocket.emit("current-user-done", refreshHeadOfQueue)
     roomSocket.emit('remove-from-queue');
-    refreshQueueLength().then(updateQueueLength)
   }
+  refreshAdminPage();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -39,17 +43,12 @@ document.addEventListener("DOMContentLoaded", () => {
   refreshAdminPage();
 });
 
-function updateQueueLength(queueLength) {
-  updateHTML('#queueLengthCount', queueLength)
-}
-
 roomSocket.on('refresh-queue', refreshHeadOfQueue);
-roomSocket.on('refresh-queue', updateQueueLength);
 roomSocket.on('add-to-queue', refreshAdminPage);
 
 function refreshAdminPage() {
   refreshHeadOfQueue();
-  refreshQueueLength().then(updateQueueLength)
+  refreshQueueLength().then(displayQueueLength)
 }
 
 function refreshHeadOfQueue() {

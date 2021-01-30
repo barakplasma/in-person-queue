@@ -13,6 +13,9 @@
     "redis",
     "socketio"
   ],
+  "engines": {
+    "node": "^14"
+  },
   "author": "Michael Salaverry",
   "license": "GPL-3.0-or-later",
   "repository": {

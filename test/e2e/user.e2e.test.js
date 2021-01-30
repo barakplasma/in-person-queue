@@ -13,15 +13,27 @@ describe('User page', () => {
    * @type {import('playwright').Page} page
    */
   let page;
+  let queueId;
+  let queueMetadataId;
 
   beforeAll(async () => {
     page = (await e2e).page;
+    context = (await e2e).context;
+
+    await context.setGeolocation({ latitude: 60.95, longitude: 30.31667 });
+
     await page.click(becomeUserSelector);
     await page.waitForSelector(joinQueueSelector);
   })
 
   afterAll(async () => {
-    let {shutdownE2E} = (await e2e);
+    let queue = require('../../queue/queue');
+    await queue._redis.del("q:9GGGX828+2M7")
+    await queue._redis.del("qm:9GGGX828+2M7")
+
+    await queue._redis.quit();
+
+    let { shutdownE2E } = (await e2e);
     await shutdownE2E()
   })
 
@@ -40,15 +52,23 @@ describe('User page', () => {
     })
 
     it('should have right queue length', async () => {
-      // await page.waitForSelector(queueLengthSelector);
       const queueLength = await page.innerText(queueLengthSelector);
       expect(queueLength).toBe("1");
     })
 
     it('should have the right location', async () => {
-      // await page.waitForSelector(locationSelector);
       const location = await page.innerText(locationSelector);
-      expect(location).toBe("9GFGX828+2M") 
+      expect(location).toBe("9GGGX828+2M")
+    })
+
+    it('should have a base64 encoded location', async () => {
+      const url = await page.url();
+      expect(url).toMatch('location=OUdHR1g4MjgrMk0%3D');
+    })
+
+    it('should have a userId', async () => {
+      const url = await page.url();
+      expect(url).toMatch(/userId=.{6}/);
     })
   })
 })

@@ -1,8 +1,9 @@
 describe('Chisonnumber', () => {
   describe('Queue', () => {
     let queue = require('../queue/queue');
-    let testQueueId = 'q:8F2C4M6J+9V'
-    let testPassword = 'MjMzLDEzNyw5NiwxOTUsMTg4LDE3NA=='
+    let testQueueId = 'q:8F2C4M6J+9V';
+    let testQueueMetadataKey = 'qm:q:8F2C4M6J+9V';
+    let testPassword = 'MjMzLDEzNyw5NiwxOTUsMTg4LDE3NA==';
 
     beforeAll(() => {
       console.log = jest.fn();
@@ -15,18 +16,23 @@ describe('Chisonnumber', () => {
 
     beforeEach(() => {
       queue._redis.del(testQueueId);
-      queue._redis.del('authorizations');
+      queue._redis.del(testQueueMetadataKey);
       console.log.mockClear();
       queue._redis.zadd.mockClear();
       queue._redis.hset.mockClear();
     })
+
+    const testUtil = {
+      createQueue: () => queue.createQueue(testQueueId, testPassword)
+    }
+
     describe('Create Queue', () => {
       it('should be able to create a queue and save it\'s password', () => {
-        return queue.createQueue(testQueueId, testPassword).then((res) => {
+        return testUtil.createQueue().then((res) => {
           expect(res).toBe(undefined);
           expect(console.log).toHaveBeenLastCalledWith({ EventName: 'created queue', queue: testQueueId });
           expect(queue._redis.zadd).toHaveBeenLastCalledWith(testQueueId, [1, "Start Queue"]);
-          expect(queue._redis.hset).toHaveBeenCalledWith('authorizations', { [testQueueId]: testPassword })
+          expect(queue._redis.hset).toHaveBeenCalledWith(testQueueMetadataKey, { 'password': testPassword })
         });
       })
     })
@@ -34,7 +40,7 @@ describe('Chisonnumber', () => {
     describe('Check Authorization for Queue Admin', () => {
       it('should reject incorrect queue password', async () => {
         await queue.createQueue(testQueueId, testPassword);
-        return queue.checkAuthForQueue(testQueueId, 'wrong password').then((res) => {
+        return queue.checkAuthForQueue({ queue: testQueueId, password: 'wrong password' }).then((res) => {
           expect(res).toBeFalsy();
         });
       })
@@ -48,13 +54,13 @@ describe('Chisonnumber', () => {
 
     describe('Get Position', () => {
       it('should find created queue', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         return queue.getPosition(testQueueId, 'Start Queue').then(res => {
           expect(res).toBe(0);
         })
       })
       it('should find 3rd person in queue', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b');
         await queue.addUserToQueue(testQueueId, 'c');
         await queue.addUserToQueue(testQueueId, 'd');
@@ -67,13 +73,13 @@ describe('Chisonnumber', () => {
 
     describe('Get Head of Queue', () => {
       it('should find head of new queue', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         return queue.getHeadOfQueue(testQueueId).then(res => {
           expect(res).toBe("Start Queue");
         })
       })
       it('should find head of old queue', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b');
         await queue.addUserToQueue(testQueueId, 'c');
         await queue.addUserToQueue(testQueueId, 'd');
@@ -89,7 +95,7 @@ describe('Chisonnumber', () => {
 
     describe('Current User Done', () => {
       it('should mark first user in queue done and next user as current head of queue', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b');
         await queue.addUserToQueue(testQueueId, 'c');
         await queue.addUserToQueue(testQueueId, 'd');
@@ -103,7 +109,7 @@ describe('Chisonnumber', () => {
 
     describe('Add user to queue', () => {
       it('should add users and get the right count', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b')
         return queue.addUserToQueue(testQueueId, 'c').then(() => {
           return queue.getQueueLength(testQueueId);
@@ -115,7 +121,7 @@ describe('Chisonnumber', () => {
       })
 
       it('should try to add existing user and have same count', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b')
         await queue.addUserToQueue(testQueueId, 'c') // add a second time
         return queue.addUserToQueue(testQueueId, 'c').then(() => {
@@ -130,7 +136,7 @@ describe('Chisonnumber', () => {
 
     describe('Get queue length', () => {
       it('should add users and get the right count', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         return queue.getQueueLength(testQueueId).then((countUsers) => {
           expect(countUsers).toBe(1);
         })
@@ -139,7 +145,7 @@ describe('Chisonnumber', () => {
 
     describe('Remove user from queue', () => {
       it('should remove a user and get the right count', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b')
         return queue.removeUserFromQueue(testQueueId, 'c').then(() => {
           return queue.getQueueLength(testQueueId);
@@ -150,7 +156,7 @@ describe('Chisonnumber', () => {
       })
 
       it('should try to remove non-existing user and have same count', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b')
         await queue.addUserToQueue(testQueueId, 'c')
         return queue.removeUserFromQueue(testQueueId, 'd').then(() => {
@@ -162,7 +168,7 @@ describe('Chisonnumber', () => {
       })
 
       it('should try to remove from empty queue', async () => {
-        await queue.createQueue(testQueueId);
+        await testUtil.createQueue();
         await queue.removeUserFromQueue(testQueueId, 'Start Queue')
         return queue.removeUserFromQueue(testQueueId, 'd').then(() => {
           return queue.getQueueLength(testQueueId);
