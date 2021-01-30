@@ -1,11 +1,13 @@
 describe('Chisonnumber', () => {
   describe('Queue', () => {
     let queue = require('../queue/queue');
-    let testQueueId = '8F2C4M6J+9V'
+    let testQueueId = 'q:8F2C4M6J+9V'
+    let testPassword = 'MjMzLDEzNyw5NiwxOTUsMTg4LDE3NA=='
 
     beforeAll(() => {
       console.log = jest.fn();
       jest.spyOn(queue._redis, 'zadd');
+      jest.spyOn(queue._redis, 'hset');
     })
     afterAll(() => {
       queue._redis.quit();
@@ -13,16 +15,34 @@ describe('Chisonnumber', () => {
 
     beforeEach(() => {
       queue._redis.del(testQueueId);
+      queue._redis.del('authorizations');
       console.log.mockClear();
       queue._redis.zadd.mockClear();
+      queue._redis.hset.mockClear();
     })
     describe('Create Queue', () => {
-      it('should be able to create a queue', () => {
-        return queue.createQueue(testQueueId).then((res) => {
-          expect(res).toBe(undefined)
-          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'created queue', queue: testQueueId })
-          expect(queue._redis.zadd).toHaveBeenLastCalledWith(testQueueId, [1, "Start Queue"])
-        })
+      it('should be able to create a queue and save it\'s password', () => {
+        return queue.createQueue(testQueueId, testPassword).then((res) => {
+          expect(res).toBe(undefined);
+          expect(console.log).toHaveBeenLastCalledWith({ EventName: 'created queue', queue: testQueueId });
+          expect(queue._redis.zadd).toHaveBeenLastCalledWith(testQueueId, [1, "Start Queue"]);
+          expect(queue._redis.hset).toHaveBeenCalledWith('authorizations', { [testQueueId]: testPassword })
+        });
+      })
+    })
+
+    describe('Check Authorization for Queue Admin', () => {
+      it('should reject incorrect queue password', async () => {
+        await queue.createQueue(testQueueId, testPassword);
+        return queue.checkAuthForQueue(testQueueId, 'wrong password').then((res) => {
+          expect(res).toBeFalsy();
+        });
+      })
+      it('should verify queue password is valid', async () => {
+        await queue.createQueue(testQueueId, testPassword);
+        return queue.checkAuthForQueue({ queue: testQueueId, password: testPassword }).then((res) => {
+          expect(res).toBeTruthy();
+        });
       })
     })
 
