@@ -24,7 +24,6 @@ function getAdminMessageText() {
 function updateAdminMessage() {
   const text = getAdminMessageText();
   adminSocket.emit("update-admin-message", text, () => {
-    window.alert('updated admin message');
     roomSocket.emit('refresh-queue');
   })
 }

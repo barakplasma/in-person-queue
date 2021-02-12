@@ -36,9 +36,10 @@ module.exports.connection = function (server) {
       }, other))
     }
 
-    roomSocket.on('join-queue', async (queue, type) => {
+    roomSocket.on('join-queue', async (queue, type, ack) => {
       queueCache = decodeQueue(queue);
       roomSocket.join(queueCache);
+      ack();
       log('person joined', { type });
     })
 
@@ -148,9 +149,10 @@ module.exports.connection = function (server) {
       }, other))
     }
 
-    userSocket.on('join-queue', (queue, userId) => {
+    userSocket.on('join-queue', (queue, userId, ack) => {
       userCache = userId;
       queueCache = decodeQueue(queue);
+      ack();
       log('user-joined-queue')
     });
 

@@ -1,4 +1,4 @@
-const { setupE2E } = require('./sharedE2E');
+const { setupE2E, cleanDB } = require('./sharedE2E');
 const expect = require('expect');
 
 const userIdSelector = '#userId';
@@ -21,6 +21,7 @@ describe('Admin page', () => {
   let context;
 
   beforeAll(async () => {
+    await cleanDB();
     page = (await e2e).page;
     context = (await e2e).context;
 
@@ -30,14 +31,10 @@ describe('Admin page', () => {
   })
 
   afterAll(async () => {
-    let queue = require('../../queue/queue');
-    await queue._redis.del("q:9GGGX828+2M7")
-    await queue._redis.del("qm:9GGGX828+2M7")
-
-    await queue._redis.quit();
+    await cleanDB();
 
     let { shutdownE2E } = (await e2e);
-    await shutdownE2E()
+    await shutdownE2E();
   })
 
   describe('should have correct start up elements', () => {
@@ -82,16 +79,11 @@ describe('Admin page', () => {
       await page.waitForSelector(submitAdminMessageSelector);
       await page.type('textarea', testMessage);
       await page.click(submitAdminMessageSelector);
-      await page.waitForEvent("dialog").then(dialog => {
-        expect(dialog.message()).toMatch('updated admin message');
-        return dialog.accept();
-      });
 
       await userPage.waitForTimeout(1000)
-      return getAdminMessage().then(res => {
-        expect(res).toMatch(testMessage);
-      })
-    })
+      let msg = await getAdminMessage()
+      expect(msg).toMatch(testMessage);
+    }, 60000)
   })
 
 })

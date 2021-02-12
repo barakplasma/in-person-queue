@@ -34,13 +34,16 @@ function removeRefresh() {
 
 document.addEventListener("DOMContentLoaded", displayJoinedState);
 document.addEventListener("DOMContentLoaded", displayLocation);
-document.addEventListener("DOMContentLoaded", refreshQueue);
 document.addEventListener("DOMContentLoaded", () => {
   joinQueue('user');
+  refreshQueue();
+})
+document.addEventListener("DOMContentLoaded", async () => {
   if (hasUserId()) {
-    roomSocket.emit('join-queue', getQueue(), getUserId());
-    userSocket.emit('join-queue', getQueue(), getUserId());
-    refreshQueue()
+    await new Promise((resolve) => {
+      userSocket.emit('join-queue', getQueue(), getUserId(), resolve);
+    })
+    refreshQueue();
   } else {
     removeRefresh();
   }

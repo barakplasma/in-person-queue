@@ -1,8 +1,9 @@
 const { chromium } = require('playwright');
+let queue = require('../../queue/queue');
 
 async function setupE2E() {
   let browser = await chromium.launch({
-    headless: false
+    headless: true
   });
   let context = await browser.newContext();
   await context.grantPermissions(['geolocation']);
@@ -30,6 +31,21 @@ async function setupE2E() {
   return { browser, page, context, shutdownE2E };
 }
 
+async function cleanDB() {
+  await queue._redis.del("q:9GGGX828+2M")
+  await queue._redis.del("qm:9GGGX828+2M")
+
+  await teardown();
+}
+
+async function teardown() {
+  await new Promise((resolve) => {
+    queue._redis.quit();
+    queue._redis.on('end', resolve);
+  });
+};
+
 module.exports = {
   setupE2E,
+  cleanDB,
 }

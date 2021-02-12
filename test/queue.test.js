@@ -1,6 +1,8 @@
+let queue = require('../queue/queue');
+const { cleanDB } = require('./e2e/sharedE2E');
+
 describe('Chisonnumber', () => {
   describe('Queue', () => {
-    let queue = require('../queue/queue');
     let testQueueId = 'q:8F2C4M6J+9V';
     let testQueueMetadataKey = 'qm:q:8F2C4M6J+9V';
     let testPassword = 'MjMzLDEzNyw5NiwxOTUsMTg4LDE3NA==';
@@ -10,13 +12,14 @@ describe('Chisonnumber', () => {
       jest.spyOn(queue._redis, 'zadd');
       jest.spyOn(queue._redis, 'hset');
     })
-    afterAll(() => {
-      queue._redis.quit();
+
+    afterAll(async () => {
+      await cleanDB();
     })
 
-    beforeEach(() => {
-      queue._redis.del(testQueueId);
-      queue._redis.del(testQueueMetadataKey);
+    beforeEach(async () => {
+      await queue._redis.del(testQueueId);
+      await queue._redis.del(testQueueMetadataKey);
       console.log.mockClear();
       queue._redis.zadd.mockClear();
       queue._redis.hset.mockClear();

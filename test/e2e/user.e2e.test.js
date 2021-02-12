@@ -1,4 +1,4 @@
-const { setupE2E } = require('./sharedE2E');
+const { setupE2E, cleanDB } = require('./sharedE2E');
 const expect = require('expect');
 
 const becomeUserSelector = '#becomeUser';
@@ -17,6 +17,7 @@ describe('User page', () => {
   let queueMetadataId;
 
   beforeAll(async () => {
+    await cleanDB()
     page = (await e2e).page;
     context = (await e2e).context;
 
@@ -27,14 +28,9 @@ describe('User page', () => {
   })
 
   afterAll(async () => {
-    let queue = require('../../queue/queue');
-    await queue._redis.del("q:9GGGX828+2M7")
-    await queue._redis.del("qm:9GGGX828+2M7")
-
-    await queue._redis.quit();
-
+    await cleanDB();
     let { shutdownE2E } = (await e2e);
-    await shutdownE2E()
+    await shutdownE2E();
   })
 
   describe('should have correct start up elements', () => {
