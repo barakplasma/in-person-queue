@@ -36,10 +36,10 @@ An intended use case of this project is to enable medical professionals, or the 
 [Implemented: Create queue] Navigate to an instance of HisoonNumber, such as [https://barakplasma.github.io/in-person-queue/client/](https://barakplasma.github.io/in-person-queue/client/) and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
 This prompts the browser to ask permission to do a geolocation check. This geolocation is used to generate an OpenLocationCode, which is used as the name of the queue. Only the queue admin must provide geolocation access. 
 
-[TODO: ADMIN URL]
+[Implemented: ADMIN URL]
 Anyone with the admin URL can act as an admin. The admin URL for a queue is a secret for controlling the queue.
 
-[TODO: ADMIN MESSAGING] An admin can set and update a queue message / title to "shout" to people waiting in that queue. This is a one-to-many communication channel.
+[Implemented: ADMIN MESSAGING] An admin can set and update a queue message / title to "shout" to people waiting in that queue. This is a one-to-many communication channel.
 
 [TODO: SEE NEARBY QUEUES]
 People can click "Join a nearby queue" to see a list of nearby queues. 

@@ -36,10 +36,14 @@ document.addEventListener("DOMContentLoaded", displayJoinedState);
 document.addEventListener("DOMContentLoaded", displayLocation);
 document.addEventListener("DOMContentLoaded", () => {
   joinQueue('user');
+  refreshQueue();
+})
+document.addEventListener("DOMContentLoaded", async () => {
   if (hasUserId()) {
-    roomSocket.emit('join-queue', getQueue(), getUserId());
-    userSocket.emit('join-queue', getQueue(), getUserId());
-    refreshMyPosition();
+    await new Promise((resolve) => {
+      userSocket.emit('join-queue', getQueue(), getUserId(), resolve);
+    })
+    refreshQueue();
   } else {
     removeRefresh();
   }
@@ -67,15 +71,18 @@ function addSelfToQueue() {
 }
 
 roomSocket.on('refresh-queue', getMyPosition);
-roomSocket.on('refresh-queue', updateQueueLength);
+roomSocket.on('refresh-queue', displayAdminMessage);
 
 function getMyPosition() {
-  userSocket.emit('get-my-position', updatePositionInDom);
+  userSocket.emit('get-my-position', displayMyPosition);
 }
 
-function refreshMyPosition() {
-  getMyPosition();
-  refreshQueueLength().then(updateQueueLength);
+function refreshQueue() {
+  if (hasUserId()) {
+    getMyPosition();
+  }
+  refreshQueueLength().then(displayQueueLength).catch(console.error);
+  refreshAdminMessage().then(displayAdminMessage).catch(console.error);
 }
 
 function iAmDone() {
@@ -86,23 +93,23 @@ function iAmDone() {
 }
 
 
-function isQueuePage() {
-  return document.querySelector('#queueLengthCount');
+function isUserPage() {
+  return document.querySelector('#userId');
 }
 
 function displayUserId(userId) {
   updateHTML('#userId', userId);
 }
 
-function updateQueueLength(queueLength) {
-  updateHTML('#queueLengthCount', queueLength);
+function displayAdminMessage({ adminMessage }) {
+  updateHTML('#admin-message', adminMessage);
 }
 
-function updatePositionInDom(msg) {
+function displayMyPosition(msg) {
   const { currentPosition } = msg;
   const displayPosition = currentPosition === null ? "Not in queue" : currentPosition + 1;
   updateHTML('#position-in-queue', displayPosition);
   document.title = `Queue: ${displayPosition} - ${getUserId()}`;
 }
 
-userSocket.on('update-queue-position', updatePositionInDom);
+userSocket.on('update-queue-position', displayMyPosition);

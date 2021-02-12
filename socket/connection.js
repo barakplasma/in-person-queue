@@ -1,5 +1,4 @@
-const crypto = require('crypto');
-const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue } = require('../queue/queue');
+const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue, updateQueueMetadata, getQueueMetadata } = require('../queue/queue');
 
 function decodeQueue(queue) {
   return 'q:' + Buffer.from(queue, 'base64').toString('utf8');
@@ -37,25 +36,33 @@ module.exports.connection = function (server) {
       }, other))
     }
 
-    roomSocket.on('join-queue', async (queue, type) => {
+    roomSocket.on('join-queue', async (queue, type, ack) => {
       queueCache = decodeQueue(queue);
       roomSocket.join(queueCache);
+      ack();
       log('person joined', { type });
     })
 
     async function refreshQueue() {
       const queueLength = await getQueueLength(queueCache);
-      roomSocket.to(queueCache).emit('refresh-queue', queueLength);
-      log('refreshed-queue', { queueLength })
+      const adminMessage = (await getQueueMetadata(queueCache)).adminMessage;
+      const update = { queueLength, adminMessage };
+      roomSocket.volatile.to(queueCache).emit('refresh-queue', update);
+      log('refreshed-queue', update)
     }
 
     roomSocket.on('get-queue-length', async (ack) => {
       const queueLength = await getQueueLength(queueCache);
-      ack(queueLength);
+      ack({ queueLength });
+    });
+
+    roomSocket.on('get-admin-message', async (ack) => {
+      const adminMessage = (await getQueueMetadata(queueCache)).adminMessage;
+      ack({ adminMessage });
     });
 
     roomSocket.on('add-to-queue', refreshQueue);
-
+    roomSocket.on('refresh-queue', refreshQueue);
     roomSocket.on('remove-from-queue', refreshQueue);
   }
 
@@ -82,9 +89,11 @@ module.exports.connection = function (server) {
       log('admin refresh', { headOfQueue })
     }
 
-    adminSocket.on("update-admin-message", (text, ack) => {
+    adminSocket.on("update-admin-message", async (text, ack) => {
+      const newMessage = { queue: queueCache, adminMessage: text };
+      await updateQueueMetadata(newMessage);
       ack();
-      log('received admin message update', { text });
+      log('updated admin message', newMessage);
     })
 
     adminSocket.on('refresh-queue', updateQueueForAdmin);
@@ -101,7 +110,7 @@ module.exports.connection = function (server) {
     adminSocket.on("current-user-done", async (ack) => {
       const userRemoved = await shiftQueue(queueCache);
       ack();
-      log('current-user-done', { userRemoved });
+      log('current-user-done', { queue: queueCache, userRemoved });
     })
   }
   adminNamespace.on('connection', adminConnection);
@@ -114,7 +123,6 @@ module.exports.connection = function (server) {
    */
   function checkAdminAuthMiddleware(socket, next) {
     if (socket.handshake.auth.queue && socket.handshake.auth.queue && checkAuthForQueue(socket.handshake.auth)) {
-      console.log(socket.handshake.auth)
       next();
     } else {
       const err = new Error("not authorized");
@@ -141,9 +149,10 @@ module.exports.connection = function (server) {
       }, other))
     }
 
-    userSocket.on('join-queue', (queue, userId) => {
+    userSocket.on('join-queue', (queue, userId, ack) => {
       userCache = userId;
       queueCache = decodeQueue(queue);
+      ack();
       log('user-joined-queue')
     });
 

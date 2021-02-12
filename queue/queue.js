@@ -27,7 +27,7 @@ async function removeUserFromQueue(queue, userId) {
 }
 
 async function createQueue(queue, password) {
-  await redis.hset('authorizations', {[queue]: password});
+  await updateQueueMetadata({ queue, password });
   return await redis.zadd(queue, [1, 'Start Queue'])
     .then(_ => {
       console.log({ EventName: 'created queue', queue });
@@ -58,8 +58,25 @@ async function shiftQueue(queue) {
   return await redis.zpopmin(queue);
 }
 
-async function checkAuthForQueue({queue, password}) {
-  return await redis.hget('authorizations', queue) === password;
+async function checkAuthForQueue({ queue, password }) {
+  return (await getQueueMetadata(queue)).password === password;
+}
+
+async function getQueueMetadata(queue) {
+  return await redis.hgetall('qm:' + queue);
+}
+
+async function updateQueueMetadata({ queue, adminMessage, password }) {
+  const changes = Object.assign({},
+    adminMessage ? { 'adminMessage': adminMessage } : null,
+    password ? { 'password': password } : null,
+  )
+
+  if (changes !== {}) {
+    return await redis.hset('qm:' + queue, changes);
+  }
+
+  return;
 }
 
 module.exports = {
@@ -71,5 +88,7 @@ module.exports = {
   getHeadOfQueue,
   shiftQueue,
   checkAuthForQueue,
+  updateQueueMetadata,
+  getQueueMetadata,
   _redis: redis,
 }
