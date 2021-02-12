@@ -18,7 +18,10 @@ function getQueue() {
 
 function displayLocation() {
   const fixed = atob(getQueue()).replace(' ', '+');
-  updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
+  // protect against XSS or invalid locations
+  if(OpenLocationCode.isValid(fixed)) {
+    updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
+  }
 }
 
 function updateHTML(selector, value) {
