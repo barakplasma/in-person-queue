@@ -27,7 +27,7 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "ioredis": "^4.24.4",
-    "socket.io": "^3.1.2"
+    "socket.io": "^4.0.1"
   },
   "devDependencies": {
     "@types/jest": "^26.0.20",
