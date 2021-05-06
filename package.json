@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@godaddy/terminus": "^4.6.0",
-    "dotenv": "^8.2.0",
+    "dotenv": "^9.0.0",
     "express": "^4.17.1",
     "ioredis": "^4.24.4",
     "socket.io": "^3.1.2"
