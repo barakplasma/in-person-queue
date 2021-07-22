@@ -23,7 +23,7 @@
     "url": "https://github.com/barakplasma/in-person-queue"
   },
   "dependencies": {
-    "@godaddy/terminus": "^4.7.2",
+    "@godaddy/terminus": "^4.9.0",
     "dotenv": "^9.0.0",
     "express": "^4.17.1",
     "ioredis": "^4.27.2",
