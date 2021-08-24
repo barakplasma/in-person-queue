@@ -33,7 +33,7 @@
     "@types/jest": "^26.0.24",
     "jest": "^27.0.6",
     "nodemon": "^2.0.12",
-    "playwright": "^1.14.0"
+    "playwright": "^1.14.1"
   },
   "browserslist": [
     "defaults",
