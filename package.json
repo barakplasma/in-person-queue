@@ -23,17 +23,17 @@
     "url": "https://github.com/barakplasma/in-person-queue"
   },
   "dependencies": {
-    "@godaddy/terminus": "^4.7.2",
-    "dotenv": "^9.0.0",
+    "@godaddy/terminus": "^4.9.0",
+    "dotenv": "^9.0.2",
     "express": "^4.17.1",
     "ioredis": "^4.27.8",
     "socket.io": "^3.1.2"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.23",
+    "@types/jest": "^26.0.24",
     "jest": "^27.0.6",
-    "nodemon": "^2.0.7",
-    "playwright": "^1.13.0"
+    "nodemon": "^2.0.12",
+    "playwright": "^1.14.0"
   },
   "browserslist": [
     "defaults",
