@@ -1,14 +1,12 @@
 const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue, updateQueueMetadata, getQueueMetadata } = require('../queue/queue');
+const { Server } = require('socket.io');
 
 function decodeQueue(queue) {
   return 'q:' + Buffer.from(queue, 'base64').toString('utf8');
 }
 
 module.exports.connection = function (server) {
-  /**
-   * @type {import('socket.io').Server} io
-   */
-  const io = require('socket.io')(server, {
+  const io = new Server(server, {
     cors: {
       origin: JSON.parse(process.env.CORS_ORIGIN || '["localhost:8080"]'),
       methods: ["GET", "POST"],
@@ -126,7 +124,7 @@ module.exports.connection = function (server) {
       next();
     } else {
       const err = new Error("not authorized");
-      err.data = { content: "Please retry later" }; // additional details
+      err['data'] = { content: "Please retry later" }; // additional details
     }
   }
 

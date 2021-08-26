@@ -66,17 +66,17 @@ async function getQueueMetadata(queue) {
   return await redis.hgetall('qm:' + queue);
 }
 
+/**
+ * 
+ * @param {{ queue: string, adminMessage?: string, password?: string}} param0 
+ */
 async function updateQueueMetadata({ queue, adminMessage, password }) {
   const changes = Object.assign({},
     adminMessage ? { 'adminMessage': adminMessage } : null,
     password ? { 'password': password } : null,
   )
 
-  if (changes !== {}) {
-    return await redis.hset('qm:' + queue, changes);
-  }
-
-  return;
+  return await redis.hset('qm:' + queue, changes);
 }
 
 module.exports = {
