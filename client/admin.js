@@ -1,7 +1,4 @@
-/**
- * @type {import('socket.io-client')} io
- */
-io;
+/// <reference types="globals.d.ts">
 
 const adminSocket = io(urlSearchParams.has('location') ?
   `${config['socket.io server host']}/admin`
@@ -14,10 +11,10 @@ const adminSocket = io(urlSearchParams.has('location') ?
 
 function getAdminMessageText() {
   /**
-   * @type {HTMLTextAreaElement}
+   * @type {HTMLTextAreaElement?}
    */
   const el = document.querySelector('textarea[name="edit-admin-message"]');
-  const html = el && el.value;
+  const html = el && el.value || "";
   return html;
 }
 

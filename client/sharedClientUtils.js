@@ -1,3 +1,5 @@
+/// <reference types="globals.d.ts">
+
 let queue;
 let urlSearchParams = new URLSearchParams(location.search);
 let env = localStorage.getItem('env') || "prod";

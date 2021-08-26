@@ -1,7 +1,4 @@
-/**
- * @type {import('socket.io-client')} io
- */
-io;
+/// <reference types="globals.d.ts">
 
 let userId;
 
@@ -57,7 +54,7 @@ function getUserId() {
       const lenDistinguishableCharacters = distinguishableCharacters.length;
       userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], "");
       urlSearchParams.set('userId', userId);
-      location.search = urlSearchParams;
+      location.search = urlSearchParams.toString();
     } else {
       userId = urlUserId;
     }

@@ -1,12 +1,8 @@
-/**
- * @type {import('socket.io-client')} io
- */
-io;
+/// <reference types="globals.d.ts">
 
 const roomSocket = io(urlSearchParams.has('location') ?
   `${config['socket.io server host']}/room`
   : `${config['socket.io server host']}/`)
-
 
 function refreshQueueLength() {
   return new Promise((resolve, reject) => {

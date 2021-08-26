@@ -1,7 +1,4 @@
-/**
- * @type {import('socket.io-client')} io
- */
-io;
+/// <reference types="globals.d.ts">
 
 const homeSocket = io(`${config['socket.io server host']}/`);
 
@@ -23,6 +20,10 @@ function redirectToAdminPage(q, password) {
   gotoPage('admin', q, password);
 }
 
+/**
+ * 
+ * @type {() => Promise<string>}
+ */
 function getLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
