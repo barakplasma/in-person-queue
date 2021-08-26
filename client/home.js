@@ -52,7 +52,7 @@ function redirectToQueue() {
 
 function createQueue() {
   getLocation().then((queue) => {
-    let password = btoa(window.crypto.getRandomValues(new Uint8Array(6)));
+    let password = btoa(window.crypto.getRandomValues(new Uint8Array(6)).toString());
     homeSocket.emit('create-queue', queue, password, () => {
       redirectToAdminPage(queue, password);
     });
