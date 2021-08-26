@@ -8,7 +8,7 @@ const PORT = process.env.PORT || "3000";
 /**
  * Make a server-side request; similar to Got
  * @param {URL} url 
- * @returns {number} statusCode
+ * @returns {Promise<{statusCode: number, url: URL}>}
  */
 const getStatusOfUrl = url => new Promise((resolve, rejects) => {
   http.get(url, (res) => {
@@ -36,7 +36,9 @@ const terminusOptions = {
     ]);
   },
   onShutdown: function () {
-    console.log('cleanup finished, server is shutting down');
+    let shutdownMessage = 'cleanup finished, server is shutting down';
+    console.log(shutdownMessage);
+    return Promise.resolve(shutdownMessage);
   },
   healthChecks: {
     '/healthcheck': function () {
