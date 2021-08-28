@@ -10,7 +10,7 @@
     "test": "jest --runInBand --silent",
     "test:e2e": "jest --testPathPattern e2e.test.js --runInBand --silent",
     "test:unit": "jest --testPathIgnorePatterns e2e.test.js --runInBand --silent",
-    "test:ci": "start-server-and-test start http://localhost:3000 test"
+    "test:ci": "start-server-and-test 3000"
   },
   "keywords": [
     "redis",
