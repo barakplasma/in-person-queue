@@ -1,6 +1,6 @@
+const { getClosestQueues } = require('../queue/queue');
 let queue = require('../queue/queue');
 const { cleanDB } = require('./e2e/sharedE2E');
-const teardown = require('./e2e/teardown');
 
 describe('Chisonnumber', () => {
   describe('Queue', () => {
@@ -40,6 +40,18 @@ describe('Chisonnumber', () => {
         });
       })
     })
+
+    describe('Get Closest Queues', () => {
+      it('should get closest queue', () => {
+        return testUtil.createQueue().then(async () => {
+          let expectedClosestQueue = Buffer.from('8F2C4M6J+9V', 'utf8').toString('base64');
+          let closestQueues = await getClosestQueues(expectedClosestQueue);
+          expect(closestQueues).toHaveLength(1);
+          expect(closestQueues).toContain(expectedClosestQueue);
+        })
+      })
+    })
+    
 
     describe('Check Authorization for Queue Admin', () => {
       it('should reject incorrect queue password', async () => {
