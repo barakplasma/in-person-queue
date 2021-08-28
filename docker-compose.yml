@@ -1,6 +1,6 @@
 services:
   redis:
-    image: "redis:alpine"
+    image: "redis"
     container_name: queue
     expose:
       - 6379
@@ -21,6 +21,6 @@ services:
     ports:
       - 6363:8080
     environment:
-      - REDIS_HOST=queue
+      - REDIS_CONNECTION_STRING=redis://queue:6379
       - NODE_ENV=development
       - CORS_ORIGIN=["localhost:8080"] # optional if you don't have CORS involved

@@ -71,12 +71,10 @@ To deploy this, you might need a [.env](https://www.npmjs.com/package/dotenv) fi
 PORT=3000
 # NODE_ENV "development" | "production"
 NODE_ENV=development
-# optional if using REDIS_PORT REDIS_HOST
-FLY_REDIS_CACHE_URL=redis://localhost:6379
-# optional if using FLY_REDIS_CACHE_URL
-REDIS_HOST=localhost:6379
+REDIS_CONNECTION_STRING=redis://:PASSWORD@HOSTNAME:PORT
 CORS_ORIGIN='["localhost:3000","https://barakplasma.github.io"]'
 ```
+See also the docker-compose.yml or fly.toml file for details
 
 ## Development
 
@@ -106,12 +104,10 @@ The client website can be hosted as static files ANYWHERE, and this means this s
 You could also grab a pre-built image from the Github actions "Deploy to Fly.io" step. Look for a line like, "registry.fly.io/chisoonnumber:deployment-1630155850" and use `docker pull registry.fly.io/chisoonnumber:deployment-1630155850` to work with it locally.
 
 ### Localhost Environment Variables
-To test in localhost, set the following localstorage keys on your localhost
-```env
-# which client.js config to use
-env=test
-# which socket.io test host to use (can be prod or localhost)
-"test host"="localhost:6363"
+To test in your browser, set the following localstorage keys on the localhost:port combo you choose to use
+```js
+window.localStorage.setItem('env', 'test');
+window.localStorage.setItem('test host', 'localhost:${port}');
 ```
 
 ### Debug

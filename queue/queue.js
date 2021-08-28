@@ -1,10 +1,8 @@
 const redisLib = require('ioredis');
-const REDIS_HOST = process.env.REDIS_HOST || "localhost:6379";
+const REDIS_CONNECTION_STRING = process.env.REDIS_CONNECTION_STRING;
 const OpenLocationCode = require('open-location-code/js/src/openlocationcode');
 
-const DEFAULT_EXPIRATION = 86400;
-
-const redis = new redisLib(process.env.NODE_ENV == "production" ? process.env.FLY_REDIS_CACHE_URL : `redis://${REDIS_HOST}`);
+const redis = new redisLib(REDIS_CONNECTION_STRING);
 
 async function addUserToQueue(queue, userId) {
   const userNotInListYet = await userNotInList(queue, userId);
