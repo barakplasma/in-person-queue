@@ -1,7 +1,7 @@
 const { chromium } = require('playwright');
-let queue = require('../../queue/queue');
-let process = require('process');
-let port = process.env.PORT || '3000';
+const queue = require('../../queue/queue');
+const process = require('process');
+const port = process.env.PORT || '3000';
 
 async function setupE2E() {
   await setupDB();
