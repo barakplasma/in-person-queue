@@ -35,7 +35,8 @@ function currentUserDone() {
 
 function generateShareURL() {
   const params = new URLSearchParams(location.search);
-  const shareLinkUrl = new URL(window.location.origin + '/queue.html');
+  const shareLinkUrl = new URL(location.origin +
+    location.pathname.replace(/admin\.html/, 'queue.html'));
   shareLinkUrl.searchParams.set('location', params.get('location'));
   return shareLinkUrl;
 }
