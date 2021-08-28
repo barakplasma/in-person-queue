@@ -61,6 +61,7 @@ A very easy way to get started is with flyctl (config is included in this repo).
 $ brew install superfly/tap/flyctl
 $ flyctl auth signup
 $ flyctl deploy
+$ flyctl secrets set REDIS_CONNECTION_STRING=redis://YOUR CONNECTION STRING HERE
 ```
 
 See the [development](#development) section for more details on getting started locally
