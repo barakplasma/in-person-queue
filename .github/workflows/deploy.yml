@@ -1,4 +1,4 @@
-name: Node.js CD
+name: Node.js CD from master
 
 on:
   push:
@@ -6,25 +6,16 @@ on:
 
 jobs:
   build:
-    timeout-minutes: 2
+    timeout-minutes: 5
     env:
       PORT: 3000
     runs-on: ubuntu-latest
     services:
       redis:
         image: redis
-        # Map TCP port 6379 on Docker host to a random free port on the Redis container
-        ports:
-          - 6379/tcp
-
-
+    container: mcr.microsoft.com/playwright:latest
     steps:
       - uses: actions/checkout@v2
-      - name: Use Node.js 14.x
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14.x
-      - run: npx playwright install-deps chromium
       - run: npm ci
       - run: npm run test:ci
       - name: Deploy to fly.io
