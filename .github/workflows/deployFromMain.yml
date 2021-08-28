@@ -1,4 +1,4 @@
-name: Node.js CD from master
+name: Deploy from main branch
 
 on:
   push:
@@ -9,6 +9,7 @@ jobs:
     timeout-minutes: 5
     env:
       PORT: 3000
+      REDIS_HOST: redis:6379
     runs-on: ubuntu-latest
     services:
       redis:
