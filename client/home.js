@@ -15,21 +15,19 @@ function gotoPage(pageName, currentOpenLocationCode, password = null) {
 document.addEventListener("DOMContentLoaded", async () => {
   let q = await generateQueueFromLocation();
   homeSocket.emit('get-closest-queues', q, (queues) => {
-    let tableRow = (queue, size = '?', distance = '?m') => `
+    let tableRow = (queue, distance = '?') => `
       <tr>
-      <td><a href="queue.html?location=${queue}">Vaccine</a></td>
-      <td>${size}</td>
-      <td>${distance}</td>
+      <td><a href="queue.html?location=${queue}">${atob(queue)}</a></td>
+      <td>${Math.ceil(parseFloat(distance))}m</td>
     </tr>
     `;
     let html = `
     <table>
       <thead>
         <th>Name</th>
-        <th>In queue</th>
         <th><img src="destination.png" height="30px" alt="Distance"></th>
       </thead>
-      ${queues.map(q => tableRow(q)).join('\n')}
+      ${queues.map(q => tableRow(q.queue, q.distance)).join('\n')}
     </table>
     `
     updateHTML('#queues', html);

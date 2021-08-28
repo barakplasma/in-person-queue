@@ -49,8 +49,8 @@ async function getPosition(queue, userId) {
 
 async function getClosestQueues(plusCode) {
   let { latitudeCenter = 0, longitudeCenter = 0 } = OpenLocationCode.decode(Buffer.from(plusCode, 'base64').toString());
-  const closestQueues = await redis.geosearch("queues", "FROMLONLAT", longitudeCenter, latitudeCenter, "BYRADIUS", 1000, 'km', "COUNT", 5, "ASC");
-  return closestQueues.map(q => Buffer.from(q.split(':')[1], 'utf-8').toString('base64'));
+  const closestQueues = await redis.geosearch("queues", "FROMLONLAT", longitudeCenter, latitudeCenter, "BYRADIUS", 100000, 'm', "COUNT", 5, "ASC", "WITHDIST");
+  return closestQueues.map(q => ({queue:Buffer.from(q[0].split(':')[1], 'utf-8').toString('base64'), distance: q[1]}));
 }
 
 async function getQueueLength(queue) {

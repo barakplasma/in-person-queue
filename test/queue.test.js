@@ -49,7 +49,7 @@ describe('Chisonnumber', () => {
           let expectedClosestQueue = Buffer.from('8F2C4M6J+9V', 'utf8').toString('base64');
           let closestQueues = await getClosestQueues(expectedClosestQueue);
           expect(closestQueues).toHaveLength(1);
-          expect(closestQueues).toContain(expectedClosestQueue);
+          expect(closestQueues).toContainEqual({"distance": "0.2295", "queue": expectedClosestQueue});
         })
       })
     })
