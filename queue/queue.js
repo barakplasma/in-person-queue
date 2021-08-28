@@ -7,11 +7,19 @@ const redis = new RedisLib(REDIS_CONNECTION_STRING);
 async function addUserToQueue(queue, userId) {
   const userNotInListYet = await userNotInList(queue, userId);
   if (userNotInListYet) {
-    const [endOfQueueUser = 'no one in queue', currentEndOfQueueScore = 0] = await redis.zrevrange(queue, 0, 0, 'WITHSCORES');
+    const [
+      endOfQueueUser = 'no one in queue',
+      currentEndOfQueueScore = 0,
+    ] = await redis.zrevrange(
+        queue, 0, 0, 'WITHSCORES',
+    );
     const endOfQueueScore = +currentEndOfQueueScore + 1;
     return await redis.zadd(queue, [endOfQueueScore, userId])
         .then(() => {
-          console.log({EventName: 'added to queue', queue, userId, endOfQueueScore});
+          console.log({
+            EventName: 'added to queue',
+            queue, userId, endOfQueueScore,
+          });
         });
   } else {
     const log = {EventName: 'user already in queue', queue, userId};
@@ -23,13 +31,19 @@ async function addUserToQueue(queue, userId) {
 async function removeUserFromQueue(queue, userId) {
   return await redis.zrem(queue, userId)
       .then((res) => {
-        console.log({EventName: 'removed from queue', removed: res, queue, userId});
+        console.log({
+          EventName: 'removed from queue',
+          removed: res, queue, userId,
+        });
       });
 }
 
 async function createQueue(queue, password) {
   await updateQueueMetadata({queue, password});
-  const {latitudeCenter = 0, longitudeCenter = 0} = OpenLocationCode.decode(queue.split(':')[1]);
+  const {
+    latitudeCenter = 0,
+    longitudeCenter = 0,
+  } = OpenLocationCode.decode(queue.split(':')[1]);
   await redis.geoadd('queues', longitudeCenter, latitudeCenter, queue);
   return await redis.zadd(queue, [1, 'Start Queue'])
       .then((_) => {
@@ -48,9 +62,21 @@ async function getPosition(queue, userId) {
 }
 
 async function getClosestQueues(plusCode) {
-  const {latitudeCenter = 0, longitudeCenter = 0} = OpenLocationCode.decode(Buffer.from(plusCode, 'base64').toString());
-  const closestQueues = await redis.geosearch('queues', 'FROMLONLAT', longitudeCenter, latitudeCenter, 'BYRADIUS', 100000, 'm', 'COUNT', 5, 'ASC', 'WITHDIST');
-  return closestQueues.map((q) => ({queue: Buffer.from(q[0].split(':')[1], 'utf-8').toString('base64'), distance: q[1]}));
+  const {
+    latitudeCenter = 0,
+    longitudeCenter = 0,
+  } = OpenLocationCode
+      .decode(
+          Buffer.from(plusCode, 'base64').toString());
+  const closestQueues = await redis.geosearch(
+      'queues', 'FROMLONLAT', longitudeCenter, latitudeCenter,
+      'BYRADIUS', 100000, 'm',
+      'COUNT', 5, 'ASC', 'WITHDIST',
+  );
+  return closestQueues.map((q) => ({
+    queue: Buffer.from(q[0].split(':')[1], 'utf-8').toString('base64'),
+    distance: q[1],
+  }));
 }
 
 async function getQueueLength(queue) {
