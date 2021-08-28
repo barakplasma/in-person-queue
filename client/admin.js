@@ -99,7 +99,5 @@ function refreshHeadOfQueue() {
 }
 
 function iAmDone() {
-  adminSocket.emit('admin-done', () => {
-    location.href = `${location.protocol}//${location.host}`;
-  })
+  adminSocket.emit('admin-done', iAmDoneRedirect)
 }

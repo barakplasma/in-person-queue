@@ -36,3 +36,7 @@ function generateUserId() {
 function updateHTML(selector, value) {
   document.querySelector(selector).innerHTML = value;
 }
+
+function iAmDoneRedirect() {
+  location.href = location.origin+location.pathname.replace(/\/queue\.html|\/admin\.html/, '');
+}

@@ -85,10 +85,8 @@ function refreshQueue() {
 }
 
 function iAmDone() {
-  userSocket.emit('user-done', () => {
-    location.href = `${location.protocol}//${location.host}`;
-  })
   roomSocket.emit('remove-from-queue');
+  userSocket.emit('user-done', iAmDoneRedirect)
 }
 
 
