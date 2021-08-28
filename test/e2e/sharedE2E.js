@@ -6,7 +6,7 @@ let port = process.env.PORT || '3000';
 async function setupE2E() {
   await setupDB();
   let browser = await chromium.launch({
-    headless: false,
+    headless: true,
   });
   let context = await browser.newContext();
   await context.setGeolocation({ latitude: 60.95, longitude: 30.31667 });
