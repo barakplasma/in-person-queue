@@ -9,7 +9,8 @@
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
     "test": "jest --runInBand --silent",
     "test:e2e": "jest --testPathPattern e2e.test.js --runInBand --silent",
-    "test:unit": "jest --testPathIgnorePatterns e2e.test.js --runInBand --silent"
+    "test:unit": "jest --testPathIgnorePatterns e2e.test.js --runInBand --silent",
+    "test:ci": "start-server-and-test start http://localhost:3000 test"
   },
   "keywords": [
     "redis",
@@ -36,7 +37,8 @@
     "@types/jest": "^27.0.1",
     "jest": "^27.0.6",
     "nodemon": "^2.0.12",
-    "playwright": "^1.14.1"
+    "playwright": "^1.14.1",
+    "start-server-and-test": "^1.13.1"
   },
   "browserslist": [
     "defaults",
