@@ -8,6 +8,10 @@ kill_timeout = 5
 [build.args]
   NODE_ENV_ARG="production"
 
+[[statics]]
+  guest_path = "/app/client"
+  url_prefix = "/client"
+
 [env]
   CORS_ORIGIN = '["https://chisoonnumber.fly.dev","https://barakplasma.github.io"]'
   NODE_ENV = "production"
@@ -32,3 +36,12 @@ kill_timeout = 5
   [[services.tcp_checks]]
     interval = 10000
     timeout = 2000
+
+  [[services.http_checks]]
+    interval = 10000
+    grace_period = "5s"
+    method = "get"
+    path = "/healthcheck"
+    protocol = "http"
+    timeout = 2000
+    tls_skip_verify = false
