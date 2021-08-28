@@ -112,3 +112,6 @@ function displayMyPosition(msg) {
 }
 
 userSocket.on('update-queue-position', displayMyPosition);
+userSocket.on('update-queue-position', () => {
+  if (navigator.vibrate) {navigator.vibrate(50);}
+});

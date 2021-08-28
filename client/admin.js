@@ -81,6 +81,9 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 roomSocket.on('refresh-queue', refreshHeadOfQueue);
+roomSocket.on('refresh-queue', () => {
+  if (navigator.vibrate) {navigator.vibrate(200);}
+});
 roomSocket.on('add-to-queue', refreshAdminPage);
 
 function refreshAdminPage() {

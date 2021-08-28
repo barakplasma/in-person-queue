@@ -21,7 +21,6 @@ describe('Admin page', () => {
   let context;
 
   beforeAll(async () => {
-    await cleanDB();
     page = (await e2e).page;
     context = (await e2e).context;
 
