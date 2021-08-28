@@ -9,10 +9,10 @@ jobs:
     timeout-minutes: 5
     env:
       PORT: 3000
-      REDIS_HOST: redis:6379
+      REDIS_CONNECTION_STRING: redis://queue:6379
     runs-on: ubuntu-latest
     services:
-      redis:
+      queue:
         image: redis
         ports:
           - 6379:6379
