@@ -1,24 +1,24 @@
-const { chromium } = require('playwright');
+const {chromium} = require('playwright');
 const queue = require('../../queue/queue');
 const process = require('process');
 const port = process.env.PORT || '3000';
 
 async function setupE2E() {
   await setupDB();
-  let browser = await chromium.launch({
+  const browser = await chromium.launch({
     headless: true,
   });
-  let context = await browser.newContext();
-  await context.setGeolocation({ latitude: 60.95, longitude: 30.31667 });
+  const context = await browser.newContext();
+  await context.setGeolocation({latitude: 60.95, longitude: 30.31667});
   await context.grantPermissions(['geolocation']);
 
   // Open new page
-  let page = await context.newPage();
+  const page = await context.newPage();
 
   // Go to localhost start page
   await page.goto(`http://localhost:${port}/`);
 
-  let pageCommand = `window.localStorage.setItem('env', 'test');window.localStorage.setItem('test host', 'localhost:${port}');`
+  const pageCommand = `window.localStorage.setItem('env', 'test');window.localStorage.setItem('test host', 'localhost:${port}');`;
 
   await page.evaluate(pageCommand);
 
@@ -31,13 +31,13 @@ async function setupE2E() {
     await browser.close();
   }
 
-  return { browser, page, context, shutdownE2E };
+  return {browser, page, context, shutdownE2E};
 }
 
 async function waitForRedis() {
   if (queue._redis.status !== 'ready') {
     // console.debug(queue._redis.status);
-    await new Promise(resolve => queue._redis.on('ready', resolve));
+    await new Promise((resolve) => queue._redis.on('ready', resolve));
   }
 }
 
@@ -57,5 +57,5 @@ module.exports = {
   waitForRedis,
   setupE2E,
   setupDB,
-  cleanDB
-}
+  cleanDB,
+};

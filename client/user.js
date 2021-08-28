@@ -1,4 +1,4 @@
-/// <reference types="globals.d.ts">
+// / <reference types="globals.d.ts">
 
 /**
  * @type {string?}
@@ -6,8 +6,8 @@
 let userId;
 
 const userSocket = io(urlSearchParams.has('location') ?
-  `${config['socket.io server host']}/user`
-  : `${config['socket.io server host']}/`);
+  `${config['socket.io server host']}/user` :
+  `${config['socket.io server host']}/`);
 
 function hasUserId() {
   return urlSearchParams.has('userId');
@@ -15,7 +15,7 @@ function hasUserId() {
 
 function displayJoinedState() {
   if (hasUserId()) {
-    let joinQueueEl = document.querySelector('#join-queue');
+    const joinQueueEl = document.querySelector('#join-queue');
     if (joinQueueEl) {
       joinQueueEl.remove();
     }
@@ -25,24 +25,24 @@ function displayJoinedState() {
 
 function removeRefresh() {
   if (!hasUserId()) {
-    let refreshEl = document.querySelector('#refresh-queue');
+    const refreshEl = document.querySelector('#refresh-queue');
     if (refreshEl) {
       refreshEl.remove();
     }
   }
 }
 
-document.addEventListener("DOMContentLoaded", displayJoinedState);
-document.addEventListener("DOMContentLoaded", displayLocation);
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', displayJoinedState);
+document.addEventListener('DOMContentLoaded', displayLocation);
+document.addEventListener('DOMContentLoaded', () => {
   joinQueue('user');
   refreshQueue();
-})
-document.addEventListener("DOMContentLoaded", async () => {
+});
+document.addEventListener('DOMContentLoaded', async () => {
   if (hasUserId()) {
     await new Promise((resolve) => {
       userSocket.emit('join-queue', getQueueFromAddressOrCache(), getUserId(), resolve);
-    })
+    });
     refreshQueue();
   } else {
     removeRefresh();
@@ -62,7 +62,7 @@ function getUserId() {
 }
 
 function addSelfToQueue() {
-  let userId = getUserId();
+  const userId = getUserId();
   userSocket.emit('add-user', getQueueFromAddressOrCache(), getUserId(), displayJoinedState);
   roomSocket.emit('add-to-queue');
   urlSearchParams.set('userId', userId);
@@ -86,7 +86,7 @@ function refreshQueue() {
 
 function iAmDone() {
   roomSocket.emit('remove-from-queue');
-  userSocket.emit('user-done', iAmDoneRedirect)
+  userSocket.emit('user-done', iAmDoneRedirect);
 }
 
 
@@ -98,18 +98,20 @@ function displayUserId(userId) {
   updateHTML('#userId', userId);
 }
 
-function displayAdminMessage({ adminMessage }) {
+function displayAdminMessage({adminMessage}) {
   updateHTML('#admin-message', adminMessage);
 }
 
 function displayMyPosition(msg) {
-  const { currentPosition } = msg;
-  const displayPosition = currentPosition === null ? "Not in queue" : currentPosition + 1;
+  const {currentPosition} = msg;
+  const displayPosition = currentPosition === null ? 'Not in queue' : currentPosition + 1;
   updateHTML('#position-in-queue', displayPosition);
   document.title = `Queue: ${displayPosition} - ${getUserId()}`;
 }
 
 userSocket.on('update-queue-position', displayMyPosition);
 userSocket.on('update-queue-position', () => {
-  if (navigator.vibrate) {navigator.vibrate(50);}
+  if (navigator.vibrate) {
+    navigator.vibrate(50);
+  }
 });

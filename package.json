@@ -10,7 +10,8 @@
     "test": "jest --runInBand --silent",
     "test:e2e": "jest --testPathPattern e2e.test.js --runInBand --silent",
     "test:unit": "jest --testPathIgnorePatterns e2e.test.js --runInBand --silent",
-    "test:ci": "start-server-and-test 3000"
+    "test:ci": "start-server-and-test 3000",
+    "lint": "eslint --fix ."
   },
   "keywords": [
     "redis",
@@ -35,6 +36,8 @@
   "devDependencies": {
     "@types/ioredis": "^4.27.1",
     "@types/jest": "^27.0.1",
+    "eslint": "^7.32.0",
+    "eslint-config-google": "^0.14.0",
     "jest": "^27.0.6",
     "nodemon": "^2.0.12",
     "playwright": "^1.14.1",

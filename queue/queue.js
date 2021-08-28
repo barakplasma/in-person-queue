@@ -1,40 +1,40 @@
-const redisLib = require('ioredis');
+const RedisLib = require('ioredis');
 const REDIS_CONNECTION_STRING = process.env.REDIS_CONNECTION_STRING;
 const OpenLocationCode = require('open-location-code/js/src/openlocationcode');
 
-const redis = new redisLib(REDIS_CONNECTION_STRING);
+const redis = new RedisLib(REDIS_CONNECTION_STRING);
 
 async function addUserToQueue(queue, userId) {
   const userNotInListYet = await userNotInList(queue, userId);
   if (userNotInListYet) {
-    const [endOfQueueUser = "no one in queue", currentEndOfQueueScore = 0] = await redis.zrevrange(queue, 0, 0, "WITHSCORES");
+    const [endOfQueueUser = 'no one in queue', currentEndOfQueueScore = 0] = await redis.zrevrange(queue, 0, 0, 'WITHSCORES');
     const endOfQueueScore = +currentEndOfQueueScore + 1;
     return await redis.zadd(queue, [endOfQueueScore, userId])
-      .then(() => {
-        console.log({ EventName: 'added to queue', queue, userId, endOfQueueScore })
-      })
+        .then(() => {
+          console.log({EventName: 'added to queue', queue, userId, endOfQueueScore});
+        });
   } else {
-    let log = { EventName: 'user already in queue', queue, userId };
-    console.log(log)
-    return Promise.resolve(log)
+    const log = {EventName: 'user already in queue', queue, userId};
+    console.log(log);
+    return Promise.resolve(log);
   }
 }
 
 async function removeUserFromQueue(queue, userId) {
   return await redis.zrem(queue, userId)
-    .then((res) => {
-      console.log({ EventName: 'removed from queue', removed: res, queue, userId })
-    })
+      .then((res) => {
+        console.log({EventName: 'removed from queue', removed: res, queue, userId});
+      });
 }
 
 async function createQueue(queue, password) {
-  await updateQueueMetadata({ queue, password });
-  let { latitudeCenter = 0, longitudeCenter = 0 } = OpenLocationCode.decode(queue.split(':')[1]);
+  await updateQueueMetadata({queue, password});
+  const {latitudeCenter = 0, longitudeCenter = 0} = OpenLocationCode.decode(queue.split(':')[1]);
   await redis.geoadd('queues', longitudeCenter, latitudeCenter, queue);
   return await redis.zadd(queue, [1, 'Start Queue'])
-    .then(_ => {
-      console.log({ EventName: 'created queue', queue });
-    })
+      .then((_) => {
+        console.log({EventName: 'created queue', queue});
+      });
 }
 
 async function userNotInList(queue, userId) {
@@ -48,9 +48,9 @@ async function getPosition(queue, userId) {
 }
 
 async function getClosestQueues(plusCode) {
-  let { latitudeCenter = 0, longitudeCenter = 0 } = OpenLocationCode.decode(Buffer.from(plusCode, 'base64').toString());
-  const closestQueues = await redis.geosearch("queues", "FROMLONLAT", longitudeCenter, latitudeCenter, "BYRADIUS", 100000, 'm', "COUNT", 5, "ASC", "WITHDIST");
-  return closestQueues.map(q => ({queue:Buffer.from(q[0].split(':')[1], 'utf-8').toString('base64'), distance: q[1]}));
+  const {latitudeCenter = 0, longitudeCenter = 0} = OpenLocationCode.decode(Buffer.from(plusCode, 'base64').toString());
+  const closestQueues = await redis.geosearch('queues', 'FROMLONLAT', longitudeCenter, latitudeCenter, 'BYRADIUS', 100000, 'm', 'COUNT', 5, 'ASC', 'WITHDIST');
+  return closestQueues.map((q) => ({queue: Buffer.from(q[0].split(':')[1], 'utf-8').toString('base64'), distance: q[1]}));
 }
 
 async function getQueueLength(queue) {
@@ -67,7 +67,7 @@ async function shiftQueue(queue) {
   return await redis.zpopmin(queue);
 }
 
-async function checkAuthForQueue({ queue, password }) {
+async function checkAuthForQueue({queue, password}) {
   return (await getQueueMetadata(queue)).password === password;
 }
 
@@ -75,15 +75,16 @@ async function getQueueMetadata(queue) {
   return await redis.hgetall('qm:' + queue);
 }
 
+// eslint-disable-next-line valid-jsdoc
 /**
- * 
- * @param {{ queue: string, adminMessage?: string, password?: string}} param0 
+ *
+ * @param {{ queue: string, adminMessage?: string, password?: string}} param0
  */
-async function updateQueueMetadata({ queue, adminMessage, password }) {
+async function updateQueueMetadata({queue, adminMessage, password}) {
   const changes = Object.assign({},
-    adminMessage ? { 'adminMessage': adminMessage } : null,
-    password ? { 'password': password } : null,
-  )
+    adminMessage ? {'adminMessage': adminMessage} : null,
+    password ? {'password': password} : null,
+  );
 
   return await redis.hset('qm:' + queue, changes);
 }
@@ -101,4 +102,4 @@ module.exports = {
   getQueueMetadata,
   getClosestQueues,
   _redis: redis,
-}
+};

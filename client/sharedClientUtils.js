@@ -1,13 +1,13 @@
-/// <reference types="globals.d.ts">
+// / <reference types="globals.d.ts">
 
 let queue;
-let urlSearchParams = new URLSearchParams(location.search);
-let env = localStorage.getItem('env') || "prod";
-let config = {
-  "socket.io server host": {
-    "prod": "chisoonnumber.fly.dev",
-    "test": localStorage.getItem('test host') || 'localhost:3000'
-  }[env]
+const urlSearchParams = new URLSearchParams(location.search);
+const env = localStorage.getItem('env') || 'prod';
+const config = {
+  'socket.io server host': {
+    'prod': 'chisoonnumber.fly.dev',
+    'test': localStorage.getItem('test host') || 'localhost:3000',
+  }[env],
 };
 
 function getQueueFromAddressOrCache() {
@@ -21,7 +21,7 @@ function getQueueFromAddressOrCache() {
 function displayLocation() {
   const fixed = atob(getQueueFromAddressOrCache()).replace(' ', '+');
   // protect against XSS or invalid locations
-  if(OpenLocationCode.isValid(fixed)) {
+  if (OpenLocationCode.isValid(fixed)) {
     updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
   }
 }
@@ -29,7 +29,7 @@ function displayLocation() {
 function generateUserId() {
   const distinguishableCharacters = 'CDEHKMPRTUWXY012458'.split('');
   const lenDistinguishableCharacters = distinguishableCharacters.length;
-  const userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], "");
+  const userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], '');
   return userId;
 }
 
