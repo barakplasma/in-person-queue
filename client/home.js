@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   homeSocket.emit('get-closest-queues', q, (queues) => {
     let tableRow = (queue, size = '?', distance = '?m') => `
       <tr>
-      <td><a href="/queue.html?location=${queue}">Vaccine</a></td>
+      <td><a href="queue.html?location=${queue}">Vaccine</a></td>
       <td>${size}</td>
       <td>${distance}</td>
     </tr>
