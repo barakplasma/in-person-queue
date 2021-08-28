@@ -11,4 +11,5 @@ declare function io(host: string, config?: {
 }): {
   on(eventName: string, cb: CallableFunction): void;
   emit(eventName: string, ...args: (CallableFunction|string)[]): void;
+  id: string;
 };

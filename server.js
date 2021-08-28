@@ -12,6 +12,14 @@ require('./socket/connection').connection(server);
 
 app.use(static('client'));
 
+app.get('/setBackend', (req, res) => {
+  res.send(`<html><script>
+    window.localStorage.setItem('env', 'test');
+    window.localStorage.setItem('test host', '${req.hostname}');
+    </script></html>
+  `);
+});
+
 createTerminus(server, terminusOptions);
 
 server.listen(PORT, () => {

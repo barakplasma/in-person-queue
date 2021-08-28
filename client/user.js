@@ -41,7 +41,13 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', async () => {
   if (hasUserId()) {
     await new Promise((resolve) => {
-      userSocket.emit('join-queue', getQueueFromAddressOrCache(), getUserId(), resolve);
+      userSocket.emit(
+          'join-queue',
+          getQueueFromAddressOrCache(),
+          getUserId(),
+          userSocket.id,
+          resolve,
+      );
     });
     refreshQueue();
   } else {
@@ -63,7 +69,12 @@ function getUserId() {
 
 function addSelfToQueue() {
   const userId = getUserId();
-  userSocket.emit('add-user', getQueueFromAddressOrCache(), getUserId(), displayJoinedState);
+  userSocket.emit('add-user',
+      getQueueFromAddressOrCache(),
+      getUserId(),
+      userSocket.id,
+      displayJoinedState,
+  );
   roomSocket.emit('add-to-queue');
   urlSearchParams.set('userId', userId);
   location.search = urlSearchParams.toString();
@@ -110,8 +121,4 @@ function displayMyPosition(msg) {
 }
 
 userSocket.on('update-queue-position', displayMyPosition);
-userSocket.on('update-queue-position', () => {
-  if (navigator.vibrate) {
-    navigator.vibrate(50);
-  }
-});
+userSocket.on('update-queue-position', vibrate);

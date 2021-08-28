@@ -104,8 +104,11 @@ The client website can be hosted as static files ANYWHERE, and this means this s
 
 You could also grab a pre-built image from the Github actions "Deploy to Fly.io" step. Look for a line like, "registry.fly.io/chisoonnumber:deployment-1630155850" and use `docker pull registry.fly.io/chisoonnumber:deployment-1630155850` to work with it locally.
 
+Using `caddy reverse-proxy --to http://localhost:3000` can help you test locally with https. Use with `/setBackend` route;
+
 ### Localhost Environment Variables
 To test in your browser, set the following localstorage keys on the localhost:port combo you choose to use
+Using `/setBackend` does this for you
 ```js
 window.localStorage.setItem('env', 'test');
 window.localStorage.setItem('test host', 'localhost:${port}');

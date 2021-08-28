@@ -162,11 +162,12 @@ module.exports.connection = function(server) {
       }, other));
     }
 
-    userSocket.on('join-queue', (queue, userId, ack) => {
+    userSocket.on('join-queue', (queue, userId, socketId, ack) => {
       userCache = userId;
       queueCache = decodeQueue(queue);
       ack();
       log('user-joined-queue');
+      log({socketId});
     });
 
     const updateMyPosition = async (ack) => {
@@ -177,12 +178,13 @@ module.exports.connection = function(server) {
 
     userSocket.on('get-my-position', updateMyPosition);
 
-    userSocket.on('add-user', async (queue, userId, ack) => {
+    userSocket.on('add-user', async (queue, userId, socketId, ack) => {
       queueCache = decodeQueue(queue);
       userCache = userId;
       await addUserToQueue(queueCache, userCache);
       ack();
       log('user-self-add');
+      log({socketId});
     });
 
     userSocket.on('user-done', async (ack) => {
@@ -192,7 +194,7 @@ module.exports.connection = function(server) {
     });
 
     userSocket.on('disconnect', () => {
-
+      log(`user disconnected`);
     });
   };
   userNamespace.on('connection', userConnection);

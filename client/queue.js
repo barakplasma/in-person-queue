@@ -24,6 +24,7 @@ function displayQueueLength(msg) {
 }
 
 roomSocket.on('refresh-queue', displayQueueLength);
+roomSocket.on('refresh-queue', vibrate);
 
 function joinQueue(type) {
   return new Promise((resolve) => roomSocket.emit('join-queue', getQueueFromAddressOrCache(), type, resolve));

@@ -44,7 +44,7 @@ function generateShareURL() {
 function generateShareLink() {
   const shareLinkUrl = generateShareURL();
   updateHTML('#shareLink',
-      `link to join queue as user: <a href="${shareLinkUrl.href}">link</a><a id="shareButton"></a>`);
+      `link to join queue as user: <a href="${shareLinkUrl.href}">link</a><a style="margin-left: .5rem" id="shareButton"></a>`);
   generateShareButton();
 }
 
@@ -83,12 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 roomSocket.on('refresh-queue', refreshHeadOfQueue);
-roomSocket.on('refresh-queue', () => {
-  if (navigator.vibrate) {
-    navigator.vibrate(200);
-  }
-});
 roomSocket.on('add-to-queue', refreshAdminPage);
+roomSocket.on('add-to-queue', vibrate);
 
 function refreshAdminPage() {
   refreshHeadOfQueue();

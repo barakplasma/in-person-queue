@@ -37,6 +37,12 @@ function updateHTML(selector, value) {
   document.querySelector(selector).innerHTML = value;
 }
 
+function vibrate() {
+  if (navigator.vibrate) {
+    navigator.vibrate(200);
+  }
+}
+
 function iAmDoneRedirect() {
   location.href = location.origin+location.pathname.replace(/\/queue\.html|\/admin\.html/, '');
 }
