@@ -1,5 +1,6 @@
-const { setupE2E, cleanDB } = require('./sharedE2E');
+const { setupE2E, cleanDB, setupDB } = require('./sharedE2E');
 const expect = require('expect');
+const teardown = require('./teardown');
 
 const userIdSelector = '#userId';
 const queueLengthSelector = '#queueLengthCount';
@@ -21,6 +22,7 @@ describe('Admin page', () => {
   let context;
 
   beforeAll(async () => {
+    await setupDB();
     page = (await e2e).page;
     context = (await e2e).context;
 
@@ -31,9 +33,8 @@ describe('Admin page', () => {
 
   afterAll(async () => {
     await cleanDB();
-
-    let { shutdownE2E } = (await e2e);
-    await shutdownE2E();
+    await (await e2e).shutdownE2E();
+    await teardown();
   })
 
   describe('should have correct start up elements', () => {

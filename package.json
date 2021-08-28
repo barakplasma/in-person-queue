@@ -7,9 +7,9 @@
     "start": "node ./server.js",
     "front-end-dev": "nodemon --inspect ./server.js",
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
-    "test": "jest --testPathPattern queue.test.js",
-    "test:e2e": "jest --testPathPattern e2e.test.js",
-    "test:all": "jest"
+    "test": "jest --runInBand --silent",
+    "test:e2e": "jest --testPathPattern e2e.test.js --runInBand --silent",
+    "test:unit": "jest --testPathIgnorePatterns e2e.test.js --runInBand --silent"
   },
   "keywords": [
     "redis",
@@ -37,9 +37,6 @@
     "jest": "^27.0.6",
     "nodemon": "^2.0.12",
     "playwright": "^1.14.1"
-  },
-  "jest": {
-    "globalTeardown": "./test/e2e/teardown.js"
   },
   "browserslist": [
     "defaults",

@@ -41,7 +41,7 @@ Anyone with the admin URL can act as an admin. The admin URL for a queue is a se
 
 [Implemented: ADMIN MESSAGING] An admin can set and update a queue message / title to "shout" to people waiting in that queue. This is a one-to-many communication channel.
 
-[TODO: SEE NEARBY QUEUES]
+[Implemented: SEE NEARBY QUEUES]
 People can click "Join a nearby queue" to see a list of nearby queues. 
 
 [Implemented: open existing queue] Alternatively, they can navigate to a queue URL (for example https://barakplasma.github.io/in-person-queue/client/queue.html?location=8G4P3QJJ+56) to join that existing queue.
@@ -114,7 +114,7 @@ env=test
 
 ### Debug
 Debug is easiest when running from localhost and not in docker-compose.
-Start a local redis instance,
+Start a local redis instance with redis locally or in docker,
 ```sh
 $ docker run --rm -it -p 6379:6379 --name some-redis redis:alpine
 ```
@@ -122,6 +122,10 @@ Then use VS-Code and launch program via debug panel.
 
 ### Tests
 There are Jest based tests here, but you need to run Redis on the same host for them to pass (like debug).
+
+Use `npm test` to run all tests.
+Use `npm run test:unit` to run all tests other than playwright end-to-end tests.
+Use `npm run test:e2e` to only run playwright end-to-end tests.
 
 #### Keywords / Buzzwords
 * WebSockets
@@ -131,4 +135,4 @@ There are Jest based tests here, but you need to run Redis on the same host for 
 * Docker
 * Fly.io
 
-<div>Icons made by <a href="https://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
+<div>Some Icons made by <a href="https://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>

@@ -1,5 +1,6 @@
-const { setupE2E, cleanDB } = require('./sharedE2E');
+const { setupE2E, cleanDB, setupDB } = require('./sharedE2E');
 const expect = require('expect');
+const teardown = require('./teardown');
 
 const userIdSelector = '#userId';
 const queueLengthSelector = '#queueLengthCount';
@@ -16,20 +17,17 @@ describe('User page', () => {
   let context;
 
   beforeAll(async () => {
+    await setupDB();
     page = (await e2e).page;
     context = (await e2e).context;
 
     await page.waitForSelector(navigateToUserPageSelector).catch(reason => console.error('did not find join queue selector because', reason));
   })
 
-  // beforeEach(async () => {
-  //   await page.reload();
-  // })
-
   afterAll(async () => {
     await cleanDB();
-    let { shutdownE2E } = (await e2e);
-    await shutdownE2E();
+    await (await e2e).shutdownE2E();
+    await teardown();
   })
 
   describe('User joining queue', () => {

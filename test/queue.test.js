@@ -1,6 +1,7 @@
 const { getClosestQueues } = require('../queue/queue');
 let queue = require('../queue/queue');
 const { cleanDB } = require('./e2e/sharedE2E');
+const teardown = require('./e2e/teardown');
 
 describe('Chisonnumber', () => {
   describe('Queue', () => {
@@ -16,6 +17,7 @@ describe('Chisonnumber', () => {
 
     afterAll(async () => {
       await cleanDB();
+      await teardown();
     })
 
     beforeEach(async () => {
