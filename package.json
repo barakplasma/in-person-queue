@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server.js",
+    "front-end-dev": "nodemon --inspect ./server.js",
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
     "test": "jest --testPathPattern queue.test.js",
     "test:e2e": "jest --testPathPattern e2e.test.js",
@@ -27,13 +28,18 @@
     "dotenv": "^9.0.2",
     "express": "^4.17.1",
     "ioredis": "^4.27.8",
-    "socket.io": "^3.1.2"
+    "socket.io": "^3.1.2",
+    "open-location-code": "git+ssh://git@github.com:google/open-location-code.git"
   },
   "devDependencies": {
+    "@types/ioredis": "^4.27.1",
     "@types/jest": "^27.0.1",
     "jest": "^27.0.6",
     "nodemon": "^2.0.12",
     "playwright": "^1.14.1"
+  },
+  "jest": {
+    "globalTeardown": "./test/e2e/teardown.js"
   },
   "browserslist": [
     "defaults",

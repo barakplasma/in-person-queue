@@ -1,5 +1,8 @@
 /// <reference types="globals.d.ts">
 
+/**
+ * @type {string?}
+ */
 let userId;
 
 const userSocket = io(urlSearchParams.has('location') ?
@@ -38,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", async () => {
   if (hasUserId()) {
     await new Promise((resolve) => {
-      userSocket.emit('join-queue', getQueue(), getUserId(), resolve);
+      userSocket.emit('join-queue', getQueueFromAddressOrCache(), getUserId(), resolve);
     })
     refreshQueue();
   } else {
@@ -50,11 +53,7 @@ function getUserId() {
   if (!userId) {
     const urlUserId = urlSearchParams.get('userId');
     if (!urlUserId) {
-      const distinguishableCharacters = 'CDEHKMPRTUWXY012458'.split('');
-      const lenDistinguishableCharacters = distinguishableCharacters.length;
-      userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], "");
-      urlSearchParams.set('userId', userId);
-      location.search = urlSearchParams.toString();
+      userId = generateUserId();
     } else {
       userId = urlUserId;
     }
@@ -63,8 +62,11 @@ function getUserId() {
 }
 
 function addSelfToQueue() {
-  userSocket.emit('add-user', getQueue(), getUserId(), displayJoinedState);
+  let userId = getUserId();
+  userSocket.emit('add-user', getQueueFromAddressOrCache(), getUserId(), displayJoinedState);
   roomSocket.emit('add-to-queue');
+  urlSearchParams.set('userId', userId);
+  location.search = urlSearchParams.toString();
 }
 
 roomSocket.on('refresh-queue', getMyPosition);

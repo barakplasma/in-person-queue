@@ -22,10 +22,13 @@
   <main>
     <section>
       <aside>
-        <button id="becomeAdmin" onclick="createQueue();">Create a <mark>new</mark> queue at my current
-          location</button>
-        <button id="becomeUser" onclick="redirectToQueue();">Join an existing queue at my current location</button>
+        <h3>Nearby Queues</h3>
+        <div id="warning"></div>
+        <div id="queues"></div>
       </aside>
+    </section>
+    <section>
+      <button id="becomeAdmin" onclick="createQueue();">Create a <mark>new</mark> queue at my current location</button>
     </section>
   </main>
   <footer><a href="https://barakplasma.github.io/in-person-queue/">About</a></footer>

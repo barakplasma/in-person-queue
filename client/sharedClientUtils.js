@@ -10,7 +10,7 @@ let config = {
   }[env]
 };
 
-function getQueue() {
+function getQueueFromAddressOrCache() {
   if (!queue) {
     const location = urlSearchParams.get('location');
     queue = location;
@@ -19,11 +19,18 @@ function getQueue() {
 }
 
 function displayLocation() {
-  const fixed = atob(getQueue()).replace(' ', '+');
+  const fixed = atob(getQueueFromAddressOrCache()).replace(' ', '+');
   // protect against XSS or invalid locations
   if(OpenLocationCode.isValid(fixed)) {
     updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
   }
+}
+
+function generateUserId() {
+  const distinguishableCharacters = 'CDEHKMPRTUWXY012458'.split('');
+  const lenDistinguishableCharacters = distinguishableCharacters.length;
+  const userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], "");
+  return userId;
 }
 
 function updateHTML(selector, value) {

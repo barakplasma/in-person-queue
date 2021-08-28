@@ -35,7 +35,7 @@ function currentUserDone() {
 
 document.addEventListener("DOMContentLoaded", () => {
   joinQueue('admin');
-  adminSocket.emit('join-queue', getQueue());
+  adminSocket.emit('join-queue', getQueueFromAddressOrCache());
   refreshAdminPage();
 });
 

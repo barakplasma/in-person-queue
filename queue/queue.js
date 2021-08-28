@@ -1,5 +1,8 @@
 const redisLib = require('ioredis');
 const REDIS_HOST = process.env.REDIS_HOST || "localhost:6379";
+const OpenLocationCode = require('open-location-code/js/src/openlocationcode');
+
+const DEFAULT_EXPIRATION = 86400;
 
 const redis = new redisLib(process.env.NODE_ENV == "production" ? process.env.FLY_REDIS_CACHE_URL : `redis://${REDIS_HOST}`);
 
@@ -28,6 +31,8 @@ async function removeUserFromQueue(queue, userId) {
 
 async function createQueue(queue, password) {
   await updateQueueMetadata({ queue, password });
+  let { latitudeCenter = 0, longitudeCenter = 0 } = OpenLocationCode.decode(queue.split(':')[1]);
+  await redis.geoadd('queues', longitudeCenter, latitudeCenter, queue);
   return await redis.zadd(queue, [1, 'Start Queue'])
     .then(_ => {
       console.log({ EventName: 'created queue', queue });
@@ -42,6 +47,12 @@ async function userNotInList(queue, userId) {
 async function getPosition(queue, userId) {
   const position = await redis.zrank(queue, userId);
   return position;
+}
+
+async function getClosestQueues(plusCode) {
+  let { latitudeCenter = 0, longitudeCenter = 0 } = OpenLocationCode.decode(Buffer.from(plusCode, 'base64').toString());
+  const closestQueues = await redis.geosearch("queues", "FROMLONLAT", longitudeCenter, latitudeCenter, "BYRADIUS", 1000, 'km', "COUNT", 5, "ASC");
+  return closestQueues.map(q => Buffer.from(q.split(':')[1], 'utf-8').toString('base64'));
 }
 
 async function getQueueLength(queue) {
@@ -90,5 +101,6 @@ module.exports = {
   checkAuthForQueue,
   updateQueueMetadata,
   getQueueMetadata,
+  getClosestQueues,
   _redis: redis,
 }

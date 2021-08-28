@@ -1,4 +1,4 @@
-const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue, updateQueueMetadata, getQueueMetadata } = require('../queue/queue');
+const { addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue, updateQueueMetadata, getQueueMetadata, getClosestQueues } = require('../queue/queue');
 const { Server } = require('socket.io');
 
 function decodeQueue(queue) {
@@ -18,6 +18,11 @@ module.exports.connection = function (server) {
       await createQueue(decodeQueue(queue), password);
       ack();
     });
+
+    socket.on('get-closest-queues', async (queue, ack) => {
+      const closestQueues = await getClosestQueues(queue);
+      ack(closestQueues)
+    });
   })
 
   const roomNamespace = io.of('/room');
@@ -35,10 +40,15 @@ module.exports.connection = function (server) {
     }
 
     roomSocket.on('join-queue', async (queue, type, ack) => {
-      queueCache = decodeQueue(queue);
-      roomSocket.join(queueCache);
-      ack();
-      log('person joined', { type });
+      try {
+        queueCache = decodeQueue(queue);
+        roomSocket.join(queueCache);
+        ack();
+        log('person joined', { type });
+      } catch (error) {
+        console.info(queue, type);
+        console.error(error);
+      }
     })
 
     async function refreshQueue() {

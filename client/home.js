@@ -12,9 +12,29 @@ function gotoPage(pageName, currentOpenLocationCode, password = null) {
   location.href = goto.toString();
 }
 
-function redirectToQueuePage(q) {
-  gotoPage('queue', q);
-}
+document.addEventListener("DOMContentLoaded", async () => {
+  let q = await generateQueueFromLocation();
+  homeSocket.emit('get-closest-queues', q, (queues) => {
+    let tableRow = (queue, size = '?', distance = '?m') => `
+      <tr>
+      <td><a href="/queue.html?location=${queue}">Vaccine</a></td>
+      <td>${size}</td>
+      <td>${distance}</td>
+    </tr>
+    `;
+    let html = `
+    <table>
+      <thead>
+        <th>Name</th>
+        <th>In queue</th>
+        <th><img src="destination.png" height="30px" alt="Distance"></th>
+      </thead>
+      ${queues.map(q => tableRow(q)).join('\n')}
+    </table>
+    `
+    updateHTML('#queues', html);
+  });
+});
 
 function redirectToAdminPage(q, password) {
   gotoPage('admin', q, password);
@@ -32,12 +52,12 @@ function getLocation() {
       function success(position) {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
-        const currentOpenLocationCode = OpenLocationCode.encode(latitude, longitude);
-        let queue = btoa(currentOpenLocationCode);
-        resolve(queue);
+        resolve([latitude,longitude].join(':'));
       }
 
       function error() {
+        // alert('Unable to retrieve your location');
+        updateHTML('#warning', '<strong>Unable to retrieve your location</strong>');
         reject('Unable to retrieve your location');
       }
 
@@ -46,12 +66,22 @@ function getLocation() {
   })
 }
 
-function redirectToQueue() {
-  getLocation().then(redirectToQueuePage);
+/**
+ * @param {string} latLonConcat 
+ */
+function generateQueueFromLatLonConcat(latLonConcat) {
+  let [latitude, longitude] = latLonConcat.split(':').map(parseFloat);
+  const currentOpenLocationCode = OpenLocationCode.encode(latitude, longitude);
+  let queue = btoa(currentOpenLocationCode);
+  return queue;
+}
+
+function generateQueueFromLocation() {
+  return getLocation().then(generateQueueFromLatLonConcat);
 }
 
 function createQueue() {
-  getLocation().then((queue) => {
+  getLocation().then(generateQueueFromLatLonConcat).then((queue) => {
     let password = btoa(window.crypto.getRandomValues(new Uint8Array(6)).toString());
     homeSocket.emit('create-queue', queue, password, () => {
       redirectToAdminPage(queue, password);

@@ -27,7 +27,7 @@ describe('Admin page', () => {
 
     await context.setGeolocation({ latitude: 59.95 + Math.random(), longitude: 30.31667 });
     // Click 'Create a new queue at my current location']
-    await page.click('//button[normalize-space(.)=\'Create a new queue at my current location\']');
+    await page.click('#becomeAdmin');
   })
 
   afterAll(async () => {
