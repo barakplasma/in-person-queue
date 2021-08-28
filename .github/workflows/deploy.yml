@@ -16,6 +16,7 @@ jobs:
         with:
           node-version: 14.x
       - run: npm ci
+      - run: npx playwright install-deps chromium
       - run: npm test
       - name: Deploy to fly.io
         uses: superfly/flyctl-actions@1.1
