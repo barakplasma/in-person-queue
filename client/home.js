@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const generateTableRow = (queue, distance = '?') => `
       <tr>
       <td><a href="queue.html?location=${queue}">${atob(queue)}</a></td>
-      <td>${Math.ceil(parseFloat(distance))}m</td>
+      <td>${Math.ceil(parseFloat(distance))} meters</td>
     </tr>
     `;
     const tableRows = queues.map((q) => {
