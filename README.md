@@ -103,6 +103,8 @@ The client website can be hosted as static files ANYWHERE, and this means this s
 4. visit `localhost:6363` (external port is configurable in the docker-compose.yml file)
 5. set your localhost environment variables there
 
+You could also grab a pre-built image from the Github actions "Deploy to Fly.io" step. Look for a line like, "registry.fly.io/chisoonnumber:deployment-1630155850" and use `docker pull registry.fly.io/chisoonnumber:deployment-1630155850` to work with it locally.
+
 ### Localhost Environment Variables
 To test in localhost, set the following localstorage keys on your localhost
 ```env
