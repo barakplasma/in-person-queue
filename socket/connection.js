@@ -48,6 +48,7 @@ module.exports.connection = function(server) {
         roomSocket.join(queueCache);
         ack();
         log('person joined', {type});
+        refreshQueue();
       } catch (error) {
         console.info(queue, type);
         console.error(error);

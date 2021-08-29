@@ -19,7 +19,9 @@ import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7Kseu
 export function makeRoomSocket() {
   return io(urlSearchParams.has('location') ?
   `${config['socket.io server host']}/room` :
-  `${config['socket.io server host']}/`);
+  `${config['socket.io server host']}/`, {
+    transports: ['websocket', 'polling'],
+  });
 }
 
 const roomSocket = makeRoomSocket();

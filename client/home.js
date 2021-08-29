@@ -6,7 +6,9 @@ import {
 // import {} from 'user';
 import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
-const homeSocket = io(`${config['socket.io server host']}/`);
+const homeSocket = io(`${config['socket.io server host']}/`, {
+  transports: ['websocket', 'polling'],
+});
 
 function gotoPage(pageName, currentOpenLocationCode, password = null) {
   const goto = new URL(location.href);

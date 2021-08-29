@@ -16,7 +16,6 @@ import {
   joinQueue,
   refreshAdminMessage,
 } from './queue.js';
-// import {} from 'user';
 import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
 /**
@@ -26,7 +25,9 @@ let userId;
 
 const userSocket = io(urlSearchParams.has('location') ?
   `${config['socket.io server host']}/user` :
-  `${config['socket.io server host']}/`);
+  `${config['socket.io server host']}/`, {
+  transports: ['websocket', 'polling'],
+});
 
 function hasUserId() {
   return urlSearchParams.has('userId');
