@@ -26,7 +26,10 @@ describe('Admin page', () => {
     page = (await e2e).page;
     context = (await e2e).context;
 
-    await context.setGeolocation({latitude: 59.95 + Math.random(), longitude: 30.31667});
+    await context.setGeolocation({
+      latitude: 59.95 + Math.random(),
+      longitude: 30.31667,
+    });
     // Click 'Create a new queue at my current location']
     await page.click('#becomeAdmin');
   });
@@ -41,7 +44,8 @@ describe('Admin page', () => {
     it('should have user id', async () => {
       await page.waitForSelector(userIdSelector);
       await page.waitForFunction((userIdSelector) => {
-        return document.querySelector(userIdSelector).innerHTML.includes('Start');
+        return document.querySelector(userIdSelector).
+            innerHTML.includes('Start');
       }, userIdSelector, {timeout: 1000});
       const currentUser = await page.innerText(userIdSelector);
       expect(currentUser).toBe('Start Queue');
@@ -69,11 +73,16 @@ describe('Admin page', () => {
     it('should be able to update admin message', async () => {
       const testMessage = new Date().toISOString();
 
-      const url = await page.url();
+      const shareLink = await page.$('#shareLink a');
+      const href = await shareLink.getAttribute('href');
+      expect(href).toMatch(/\/queue.html/);
       const userPage = await context.newPage();
-      await userPage.goto(url.replace('admin', 'queue').replace(/password=.*/, ''));
+      await userPage.goto(
+          href,
+      );
       await userPage.waitForSelector(userPageAdminMessageSelector);
-      const getAdminMessage = () => userPage.innerText(userPageAdminMessageSelector);
+      const getAdminMessage = () => userPage
+          .innerText(userPageAdminMessageSelector);
       expect(await getAdminMessage()).not.toMatch(testMessage);
 
       await page.waitForSelector(submitAdminMessageSelector);
@@ -84,5 +93,31 @@ describe('Admin page', () => {
       const msg = await getAdminMessage();
       expect(msg).toMatch(testMessage);
     }, 60000);
+
+    it('should be able to refresh page', async () => {
+      expect(await page.isVisible('#refresh-queue')).toBeTruthy();
+
+      await page.click('#refresh-queue');
+    });
+
+    it('should be able to mark current user done', async () => {
+      const currentUser = await page.innerText(userIdSelector);
+      expect(currentUser).toEqual('Start Queue');
+
+      page.on('dialog', (dialog) => dialog.accept());
+      await page.click('#current-user-done');
+
+      expect(await page.innerText(userIdSelector)).not.toEqual(currentUser);
+    });
+  });
+
+  describe('Done button', () => {
+    it('should redirect on done', async () => {
+      const homePageRegex = /\/$/;
+      expect(page.url()).toMatch('admin.html');
+      await page.click('.done');
+      await page.waitForURL(homePageRegex);
+      expect(page.url()).toMatch(homePageRegex);
+    });
   });
 });

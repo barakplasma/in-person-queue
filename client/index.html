@@ -9,11 +9,7 @@
     integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
     integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o=" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
-    integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
-  <script src="sharedClientUtils.js"></script>
-  <script src="home.js"></script>
-  <!-- <script src="setBackend"></script> -->
+  <script type="module" src="./home.js"></script>
 </head>
 
 <body>
@@ -29,7 +25,7 @@
       </aside>
     </section>
     <section>
-      <button id="becomeAdmin" onclick="createQueue();">Create a <mark>new</mark> queue at my current location</button>
+      <button id="becomeAdmin">Create a <mark>new</mark> queue at my current location</button>
     </section>
   </main>
   <footer><a href="https://barakplasma.github.io/in-person-queue/">About</a></footer>

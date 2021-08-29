@@ -1,4 +1,23 @@
 // / <reference types="globals.d.ts">
+import {
+  config,
+  updateHTML,
+  urlSearchParams,
+  displayLocation,
+  getQueueFromAddressOrCache,
+  iAmDoneRedirect,
+  vibrate,
+  generateUserId,
+} from './sharedClientUtils.js';
+import {
+  makeRoomSocket,
+  refreshQueueLength,
+  displayQueueLength,
+  joinQueue,
+  refreshAdminMessage,
+} from './queue.js';
+// import {} from 'user';
+import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
 /**
  * @type {string?}
@@ -23,22 +42,11 @@ function displayJoinedState() {
   }
 }
 
-function removeRefresh() {
-  if (!hasUserId()) {
-    const refreshEl = document.querySelector('#refresh-queue');
-    if (refreshEl) {
-      refreshEl.remove();
-    }
-  }
-}
-
-document.addEventListener('DOMContentLoaded', displayJoinedState);
-document.addEventListener('DOMContentLoaded', displayLocation);
 document.addEventListener('DOMContentLoaded', () => {
-  joinQueue('user');
-  refreshQueue();
+  setTimeout(refreshQueue, 500);
 });
 document.addEventListener('DOMContentLoaded', async () => {
+  joinQueue('user');
   if (hasUserId()) {
     await new Promise((resolve) => {
       userSocket.emit(
@@ -49,10 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           resolve,
       );
     });
-    refreshQueue();
-  } else {
-    removeRefresh();
   }
+  displayLocation();
+  displayJoinedState();
 });
 
 function getUserId() {
@@ -67,7 +74,7 @@ function getUserId() {
   return userId;
 }
 
-function addSelfToQueue() {
+export function addSelfToQueue() {
   const userId = getUserId();
   userSocket.emit('add-user',
       getQueueFromAddressOrCache(),
@@ -80,14 +87,16 @@ function addSelfToQueue() {
   location.search = urlSearchParams.toString();
 }
 
+const roomSocket = makeRoomSocket();
+
 roomSocket.on('refresh-queue', getMyPosition);
 roomSocket.on('refresh-queue', displayAdminMessage);
 
-function getMyPosition() {
+export function getMyPosition() {
   userSocket.emit('get-my-position', displayMyPosition);
 }
 
-function refreshQueue() {
+export function refreshQueue() {
   if (hasUserId()) {
     getMyPosition();
   }
@@ -95,7 +104,7 @@ function refreshQueue() {
   refreshAdminMessage().then(displayAdminMessage).catch(console.error);
 }
 
-function iAmDone() {
+export function iAmDone() {
   roomSocket.emit('remove-from-queue');
   userSocket.emit('user-done', iAmDoneRedirect);
 }
@@ -109,13 +118,14 @@ function displayUserId(userId) {
   updateHTML('#userId', userId);
 }
 
-function displayAdminMessage({adminMessage}) {
-  updateHTML('#admin-message', adminMessage);
+export function displayAdminMessage({adminMessage}) {
+  updateHTML('#admin-message', adminMessage ? adminMessage : '');
 }
 
-function displayMyPosition(msg) {
+export function displayMyPosition(msg) {
   const {currentPosition} = msg;
-  const displayPosition = currentPosition === null ? 'Not in queue' : currentPosition + 1;
+  const displayPosition = currentPosition === null ?
+    'Not in queue' : currentPosition + 1;
   updateHTML('#position-in-queue', displayPosition);
   document.title = `Queue: ${displayPosition} - ${getUserId()}`;
 }

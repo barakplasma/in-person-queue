@@ -28,10 +28,14 @@ describe('User page', () => {
   });
 
   describe('Homepage', () => {
-    it('should give user chance to navigate to queue from home page', async () => {
-      await page.waitForSelector(navigateToUserPageSelector).catch((reason) => console.error('did not find join queue selector because', reason));
-      expect(await page.isVisible(navigateToUserPageSelector)).toBeTruthy();
-    });
+    it('should give user chance to navigate to queue from home page',
+        async () => {
+          await page.waitForSelector(navigateToUserPageSelector)
+              .catch((reason) => console.error(
+                  'did not find join queue selector because', reason,
+              ));
+          expect(await page.isVisible(navigateToUserPageSelector)).toBeTruthy();
+        });
 
     it('should show 1 nearby queues', async () => {
       expect(await page.$$(navigateToUserPageSelector)).toHaveLength(1);

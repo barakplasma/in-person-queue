@@ -1,4 +1,10 @@
 // / <reference types="globals.d.ts">
+import {
+  config,
+  updateHTML,
+} from './sharedClientUtils.js';
+// import {} from 'user';
+import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
 const homeSocket = io(`${config['socket.io server host']}/`);
 
@@ -99,3 +105,5 @@ function createQueue() {
     });
   });
 }
+
+document.querySelector('#becomeAdmin')?.addEventListener('click', createQueue);

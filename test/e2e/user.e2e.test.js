@@ -60,10 +60,10 @@ describe('User page', () => {
     });
 
     it('should show user position in queue', async () => {
+      await page.waitForTimeout(1000);
       const positionInQueue = await page.innerText('#position-in-queue');
       expect(positionInQueue).toMatch('2');
     });
-
 
     it('should include start queue and current user', async () => {
       const queueLength = await page.innerText(queueLengthSelector);
@@ -84,6 +84,15 @@ describe('User page', () => {
       // await page.waitForNavigation();
       const url = await page.url();
       expect(url).toMatch(/userId=.{6}/);
+    });
+  });
+  describe('Done button', () => {
+    it('should redirect on done', async () => {
+      const homePageRegex = /\/$/;
+      expect(page.url()).toMatch('queue.html');
+      await page.click('.done');
+      await page.waitForURL(homePageRegex);
+      expect(page.url()).toMatch(homePageRegex);
     });
   });
 });

@@ -9,11 +9,8 @@
     integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
     integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o=" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
-    integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
-  <script src="sharedClientUtils.js"></script>
-  <script src="queue.js"></script>
-  <script src="admin.js"></script>
+  <script type="module" src="./admin.js"></script>
+  <script type="module" src="./user.js"></script>
 </head>
 
 <body>
@@ -27,13 +24,13 @@
     </section>
     <section>
       <p>
-        <button id="current-user-done" onclick="currentUserDone();">Current user done</button>
-        <button id="refresh-queue" onclick="refreshAdminPage()">Refresh</button>
+        <button id="current-user-done">Current user done</button>
+        <button id="refresh-queue">Refresh</button>
       </p>
     </section>
     <section>
       <aside>
-        <p id="queueLengthContainer" onclick="refreshAdminPage()">Queue Length: <span id="queueLengthCount">N/A</span>
+        <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span>
         </p>
         <p id="locationContainer">Location: <a id="location">N/A</a></p>
         <p id="shareLink"></p>
@@ -44,8 +41,9 @@
         <label for="edit-admin-message">Edit Admin Message:</label></summary>
         <textarea name="edit-admin-message" rows="8"
           placeholder="Use this form to give your queue users some details on what this queue is for, what to do when it is their turn, and who you are."
+          id="admin-message"
           spellcheck="true" maxlength="1000"></textarea>
-        <button id="submit-admin-message" type="button" onclick="updateAdminMessage()">update admin message</button>
+        <button id="submit-admin-message" type="button">update admin message</button>
       </form>
     </section>
     <style>
@@ -60,7 +58,7 @@
         min-width: 90%;
       }
     </style>
-    <footer><a onclick="iAmDone()">Quit queue admin</a></footer>
+    <footer><a class="done">Quit queue admin</a></footer>
   </main>
 </body>
 

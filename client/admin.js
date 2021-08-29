@@ -1,4 +1,21 @@
 // / <reference types="globals.d.ts">
+import {
+  config,
+  updateHTML,
+  urlSearchParams,
+  getQueueFromAddressOrCache,
+  vibrate,
+  displayLocation,
+  iAmDoneRedirect,
+} from './sharedClientUtils.js';
+import {
+  makeRoomSocket,
+  refreshQueueLength,
+  displayQueueLength,
+  joinQueue,
+} from './queue.js';
+// import {} from 'user';
+import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
 const adminSocket = io(urlSearchParams.has('location') ?
   `${config['socket.io server host']}/admin` :
@@ -8,6 +25,8 @@ const adminSocket = io(urlSearchParams.has('location') ?
     password: urlSearchParams.get('password'),
   },
 });
+
+const roomSocket = makeRoomSocket();
 
 function getAdminMessageText() {
   /**
@@ -20,9 +39,8 @@ function getAdminMessageText() {
 
 function updateAdminMessage() {
   const text = getAdminMessageText();
-  adminSocket.emit('update-admin-message', text, () => {
-    roomSocket.emit('refresh-queue');
-  });
+  adminSocket.emit('update-admin-message', text);
+  roomSocket.emit('refresh-queue');
 }
 
 function currentUserDone() {
@@ -101,3 +119,17 @@ function refreshHeadOfQueue() {
 function iAmDone() {
   adminSocket.emit('admin-done', iAmDoneRedirect);
 }
+function handleClick(selector, cb) {
+  document.querySelector(selector)?.
+      addEventListener('click', cb);
+}
+
+[
+  ['#submit-admin-message', updateAdminMessage],
+  ['.done', iAmDone],
+  ['#current-user-done', currentUserDone],
+  ['#refresh-queue', refreshAdminPage],
+  ['#queueLengthContainer', refreshAdminPage],
+].forEach(([selector, cb]) =>
+  handleClick(selector, cb),
+);

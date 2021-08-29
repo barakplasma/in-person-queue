@@ -9,11 +9,7 @@
     integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY=" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
     integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o=" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/socket.io-client@3.1.0/dist/socket.io.min.js"
-    integrity="sha256-UsOawpp505XiGFn1Zwx2d4aBWnNcI0ymgB1bpdGPHXE=" crossorigin="anonymous"></script>
-  <script src="sharedClientUtils.js"></script>
-  <script src="queue.js"></script>
-  <script src="user.js"></script>
+  <script type="module" src="./queue.js"></script>
 </head>
 
 <body>
@@ -25,7 +21,7 @@
       <aside>
         <h3>Queue Position</h3>
         <mark id="position-in-queue">Not yet in queue</mark>
-        <p id="queueLengthContainer" onclick="refreshQueueLength()">Queue Length: <span id="queueLengthCount">N/A</span>
+        <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span>
         </p>
         <p id="userIdContainer">Your User Id: <span id="userId">N/A</span></p>
         <p id="locationContainer">Location: <a id="location">N/A</a></p>
@@ -33,9 +29,9 @@
     </section>
     <section>
       <p>
-        <button id="join-queue" onclick="addSelfToQueue(); refreshQueue();">Join Queue</button>
-        <button id="refresh-queue" onclick="refreshQueue();">Refresh</button>
-        <button onclick="iAmDone()">Done</button>
+        <button id="join-queue">Join Queue</button>
+        <button id="refresh-queue">Refresh</button>
+        <button id="done-btn" class="done">Done</button>
       </p>
     </section>
     <style>
@@ -43,7 +39,7 @@
         text-align: center;
       }
     </style>
-    <footer><a onclick="iAmDone()">Leave Queue</a></footer>
+    <footer><a id="done-link" class="done">Leave Queue</a></footer>
   </main>
 </body>
 

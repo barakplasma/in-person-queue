@@ -100,10 +100,9 @@ module.exports.connection = function(server) {
       log('admin refresh', {headOfQueue});
     };
 
-    adminSocket.on('update-admin-message', async (text, ack) => {
+    adminSocket.on('update-admin-message', async (text) => {
       const newMessage = {queue: queueCache, adminMessage: text};
       await updateQueueMetadata(newMessage);
-      ack();
       log('updated admin message', newMessage);
     });
 
