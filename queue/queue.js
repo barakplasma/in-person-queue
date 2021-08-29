@@ -4,18 +4,22 @@ const OpenLocationCode = require('open-location-code/js/src/openlocationcode');
 
 const redis = new RedisLib(REDIS_CONNECTION_STRING);
 
+redis.defineCommand('addToEndOfQueue', {
+  numberOfKeys: 1,
+  lua: `
+    local lastInQueue = redis.call('zrevrange', KEYS[1], 0, 0, 'WITHSCORES');
+    local lastInQueueScore = tonumber(lastInQueue[2]) or 0;
+    local newLastInQueueScore = lastInQueueScore+1;
+    redis.call('zadd', KEYS[1], newLastInQueueScore, ARGV[1]);
+    return newLastInQueueScore;
+  `,
+});
+
 async function addUserToQueue(queue, userId) {
   const userNotInListYet = await userNotInList(queue, userId);
   if (userNotInListYet) {
-    const [
-      endOfQueueUser = 'no one in queue',
-      currentEndOfQueueScore = 0,
-    ] = await redis.zrevrange(
-        queue, 0, 0, 'WITHSCORES',
-    );
-    const endOfQueueScore = +currentEndOfQueueScore + 1;
-    return await redis.zadd(queue, [endOfQueueScore, userId])
-        .then(() => {
+    return await redis['addToEndOfQueue'](queue, userId)
+        .then((endOfQueueScore) => {
           console.log({
             EventName: 'added to queue',
             queue, userId, endOfQueueScore,
