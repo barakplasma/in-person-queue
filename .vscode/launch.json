@@ -17,29 +17,12 @@
         "${workspaceRoot}/node_modules/.bin/jest",
         "--runInBand",
         // "--testRegex",
-        // "multiple.users.e2e.test.js"
+        // "multiple.users.e2e.test.js",
+        "--testTimeout=90000"
       ],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "port": 9229
-    },
-    {
-      "name": "Debug E2E tests via NPM",
-      "request": "launch",
-      "runtimeArgs": [
-        "run-script",
-        "test:e2e",
-        "--",
-        "--testTimeout=90000"
-      ],
-      "env": {
-        "PWDEBUG": "1"
-      },
-      "runtimeExecutable": "npm",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "type": "pwa-node"
     },
     {
       "type": "pwa-node",

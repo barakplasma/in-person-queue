@@ -1,4 +1,4 @@
-const {setupE2E, cleanDB, setupDB} = require('./sharedE2E');
+const {setupE2E, cleanDB} = require('./sharedE2E');
 const expect = require('expect');
 const teardown = require('./teardown');
 
@@ -31,13 +31,14 @@ describe('Multiple Users', () => {
 
           await user1Page.waitForLoadState('networkidle');
 
-          const wsSpyUser1 = jest.fn();
+          const wsU1 = function(...args) {
+            console.debug('user1Page', ...args);
+          };
           user1Page.on('websocket', (ws) => {
-            wsSpyUser1(ws.url());
-            ws.on('socketerror', wsSpyUser1);
-            ws.on('framesent', wsSpyUser1);
-            ws.on('framereceived', wsSpyUser1);
-            ws.on('close', wsSpyUser1);
+            wsU1(ws.url());
+            ws.on('framesent', wsU1);
+            ws.on('framereceived', wsU1);
+            // ws.on('close', wsSpyUser1);
           });
 
           // await context.tracing.start({ screenshots: true, snapshots: true })
@@ -50,13 +51,14 @@ describe('Multiple Users', () => {
 
           await user2Page.goto(user1Page.url().replace(/userId.*$/, ''));
 
-          const wsSpyUser2 = jest.fn();
+          const wsU2 = function(...args) {
+            console.debug('user2Page', ...args);
+          };
           user2Page.on('websocket', (ws) => {
-            wsSpyUser2(ws.url());
-            ws.on('socketerror', wsSpyUser2);
-            ws.on('framesent', wsSpyUser2);
-            ws.on('framereceived', wsSpyUser2);
-            ws.on('close', wsSpyUser2);
+            wsU2(ws.url());
+            ws.on('framesent', wsU2);
+            ws.on('framereceived', wsU2);
+            // ws.on('close', wsSpyUser2);
           });
 
           await user2Page.click(joinQueueSelector);
@@ -67,7 +69,6 @@ describe('Multiple Users', () => {
           const user1QueueLength = await await user1Page
               .innerText(queueLengthSelector);
           // await context.tracing.stop({ path: 'trace.zip' });
-          expect(wsSpyUser1).toHaveBeenCalled();
           expect(user1QueueLength).toBe('3');
 
           await user2Page.waitForTimeout(1000);
@@ -84,6 +85,7 @@ describe('Multiple Users', () => {
           await user1Page.click('text=Done');
 
           await user2Page.waitForTimeout(1000);
+
           // await user2Page.pause();
           await assertPosition(user2Page, 2);
         }, 6e5);
