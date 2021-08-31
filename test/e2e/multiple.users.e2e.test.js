@@ -35,10 +35,8 @@ describe('Multiple Users', () => {
             console.debug('user1Page', ...args);
           };
           user1Page.on('websocket', (ws) => {
-            wsU1(ws.url());
             ws.on('framesent', wsU1);
             ws.on('framereceived', wsU1);
-            // ws.on('close', wsSpyUser1);
           });
 
           // await context.tracing.start({ screenshots: true, snapshots: true })
@@ -55,10 +53,8 @@ describe('Multiple Users', () => {
             console.debug('user2Page', ...args);
           };
           user2Page.on('websocket', (ws) => {
-            wsU2(ws.url());
             ws.on('framesent', wsU2);
             ws.on('framereceived', wsU2);
-            // ws.on('close', wsSpyUser2);
           });
 
           await user2Page.click(joinQueueSelector);
