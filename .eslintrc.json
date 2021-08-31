@@ -3,9 +3,12 @@
         "browser": true,
         "commonjs": true,
         "es2021": true,
-        "node": true
+        "node": true,
+        "jest/globals": true,
+        "cypress/globals": true
     },
     "extends": [
+        "eslint:recommended",
         "google"
     ],
     "parserOptions": {
@@ -15,6 +18,11 @@
     "rules": {
         "no-unused-vars": "off",
         "require-jsdoc": "off",
+        "no-inner-declarations": "off",
         "max-len": "warn"
-    }
+    },
+    "plugins": [
+        "cypress",
+        "jest"
+    ]
 }

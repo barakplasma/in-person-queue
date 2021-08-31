@@ -105,10 +105,11 @@ async function getQueueMetadata(queue) {
   return await redis.hgetall('qm:' + queue);
 }
 
-// eslint-disable-next-line valid-jsdoc
 /**
- *
- * @param {{ queue: string, adminMessage?: string, password?: string}} param0
+ * @typedef {{ queue: string, adminMessage?: string, password?: string}} QueueMetadata
+ */
+/**
+ * @param {QueueMetadata} param0
  */
 async function updateQueueMetadata({queue, adminMessage, password}) {
   const changes = Object.assign({},

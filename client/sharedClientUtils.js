@@ -21,6 +21,8 @@ export function getQueueFromAddressOrCache() {
 export function displayLocation() {
   const fixed = atob(getQueueFromAddressOrCache()).replace(' ', '+');
   // protect against XSS or invalid locations
+  // @ts-ignore
+  // eslint-disable-next-line no-undef
   if (OpenLocationCode.isValid(fixed)) {
     updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
   }
