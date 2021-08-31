@@ -71,14 +71,21 @@ describe('Multiple Users', () => {
           expect(user1QueueLength).toBe('3');
 
           await user2Page.waitForTimeout(1000);
-          const user2PositionInQueue = await user2Page
-              .innerText('#position-in-queue');
-          expect(user2PositionInQueue).toMatch('3');
+          async function assertPosition(page, position) {
+            expect(await page
+                .innerText('#position-in-queue')).toMatch(position.toString());
+          }
+
+          await assertPosition(user2Page, 3);
 
           await user2Page.waitForTimeout(1000);
-          const user1PositionInQueue = await user1Page
-              .innerText('#position-in-queue');
-          expect(user1PositionInQueue).toMatch('2');
+          await assertPosition(user1Page, 2);
+
+          await user1Page.click('text=Done');
+
+          await user2Page.waitForTimeout(1000);
+          // await user2Page.pause();
+          await assertPosition(user2Page, 2);
         }, 6e5);
   });
 });
