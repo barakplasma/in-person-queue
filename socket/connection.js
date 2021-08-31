@@ -1,4 +1,16 @@
-const {addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue, updateQueueMetadata, getQueueMetadata, getClosestQueues} = require('../queue/queue');
+const {
+  addUserToQueue,
+  removeUserFromQueue,
+  createQueue,
+  getPosition,
+  getQueueLength,
+  getHeadOfQueue,
+  shiftQueue,
+  checkAuthForQueue,
+  updateQueueMetadata,
+  getQueueMetadata,
+  getClosestQueues,
+} = require('../queue/queue');
 const {Server} = require('socket.io');
 
 function decodeQueue(queue) {
@@ -36,10 +48,15 @@ module.exports.connection = function(server) {
   const roomConnection = (roomSocket) => {
     let queueCache;
     function log(msg, other) {
-      console.log(Object.assign({
-        EventMessage: msg,
-        queue: queueCache,
-      }, other));
+      console.log(
+          Object.assign(
+              {
+                EventMessage: msg,
+                queue: queueCache,
+              },
+              other,
+          ),
+      );
     }
 
     roomSocket.on('join-queue', async (queue, type, ack) => {
@@ -89,10 +106,15 @@ module.exports.connection = function(server) {
   const adminConnection = (adminSocket) => {
     let queueCache;
     function log(msg, other) {
-      console.log(Object.assign({
-        EventMessage: msg,
-        queue: queueCache,
-      }, other));
+      console.log(
+          Object.assign(
+              {
+                EventMessage: msg,
+                queue: queueCache,
+              },
+              other,
+          ),
+      );
     }
 
     const updateQueueForAdmin = async (ack) => {
@@ -126,16 +148,17 @@ module.exports.connection = function(server) {
   };
   adminNamespace.on('connection', adminConnection);
 
-
   /**
    *
    * @param {Socket} socket
    * @param {Function} next
    */
   function checkAdminAuthMiddleware(socket, next) {
-    if (socket.handshake.auth.queue &&
+    if (
       socket.handshake.auth.queue &&
-      checkAuthForQueue(socket.handshake.auth)) {
+      socket.handshake.auth.queue &&
+      checkAuthForQueue(socket.handshake.auth)
+    ) {
       next();
     } else {
       const err = new Error('not authorized');
@@ -155,11 +178,16 @@ module.exports.connection = function(server) {
     let queueCache;
 
     function log(msg, other) {
-      console.log(Object.assign({
-        EventMessage: msg,
-        queue: queueCache,
-        userId: userCache,
-      }, other));
+      console.log(
+          Object.assign(
+              {
+                EventMessage: msg,
+                queue: queueCache,
+                userId: userCache,
+              },
+              other,
+          ),
+      );
     }
 
     userSocket.on('join-queue', (queue, userId, socketId, ack) => {

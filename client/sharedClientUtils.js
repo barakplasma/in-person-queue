@@ -5,8 +5,8 @@ export const urlSearchParams = new URLSearchParams(location.search);
 const env = localStorage.getItem('env') || 'prod';
 export const config = {
   'socket.io server host': {
-    'prod': 'chisoonnumber.fly.dev',
-    'test': localStorage.getItem('test host') || 'localhost:3000',
+    prod: 'chisoonnumber.fly.dev',
+    test: localStorage.getItem('test host') || 'localhost:3000',
   }[env],
 };
 
@@ -24,14 +24,23 @@ export function displayLocation() {
   // @ts-ignore
   // eslint-disable-next-line no-undef
   if (OpenLocationCode.isValid(fixed)) {
-    updateHTML('#location', `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`);
+    updateHTML(
+        '#location',
+        `<a target="_blank" href="https://plus.codes/${fixed}">${fixed}</a>`,
+    );
   }
 }
 
 export function generateUserId() {
   const distinguishableCharacters = 'CDEHKMPRTUWXY012458'.split('');
   const lenDistinguishableCharacters = distinguishableCharacters.length;
-  const userId = crypto.getRandomValues(new Uint8ClampedArray(6)).reduce((acc, n) => acc + distinguishableCharacters[n % lenDistinguishableCharacters], '');
+  const userId = crypto
+      .getRandomValues(new Uint8ClampedArray(6))
+      .reduce(
+          (acc, n) =>
+            acc + distinguishableCharacters[n % lenDistinguishableCharacters],
+          '',
+      );
   return userId;
 }
 
@@ -46,5 +55,7 @@ export function vibrate() {
 }
 
 export function iAmDoneRedirect() {
-  location.href = location.origin+location.pathname.replace(/\/queue\.html|\/admin\.html/, '');
+  location.href =
+    location.origin +
+    location.pathname.replace(/\/queue\.html|\/admin\.html/, '');
 }

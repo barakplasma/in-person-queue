@@ -27,14 +27,14 @@ describe('User page', () => {
   });
 
   describe('Homepage', () => {
-    it('should give user chance to navigate to queue from home page',
-        async () => {
-          await page.waitForSelector(navigateToUserPageSelector)
-              .catch((reason) => console.error(
-                  'did not find join queue selector because', reason,
-              ));
-          expect(await page.isVisible(navigateToUserPageSelector)).toBeTruthy();
-        });
+    it('should give user chance to navigate to queue from home page', async () => {
+      await page
+          .waitForSelector(navigateToUserPageSelector)
+          .catch((reason) =>
+            console.error('did not find join queue selector because', reason),
+          );
+      expect(await page.isVisible(navigateToUserPageSelector)).toBeTruthy();
+    });
 
     it('should show 1 nearby queues', async () => {
       expect(await page.$$(navigateToUserPageSelector)).toHaveLength(1);
@@ -43,7 +43,9 @@ describe('User page', () => {
     it('should have an about link', async () => {
       const aLink = await page.$('body > footer > a');
       expect(await aLink.innerText()).toMatch('About');
-      expect(await aLink.getAttribute('href')).toMatch('https://barakplasma.github.io/in-person-queue/');
+      expect(await aLink.getAttribute('href')).toMatch(
+          'https://barakplasma.github.io/in-person-queue/',
+      );
     });
   });
 });

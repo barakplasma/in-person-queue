@@ -42,10 +42,15 @@ describe('Admin page', () => {
   describe('should have correct start up elements', () => {
     it('should have user id', async () => {
       await page.waitForSelector(userIdSelector);
-      await page.waitForFunction((userIdSelector) => {
-        return document.querySelector(userIdSelector).
-            innerHTML.includes('Start');
-      }, userIdSelector, {timeout: 1000});
+      await page.waitForFunction(
+          (userIdSelector) => {
+            return document
+                .querySelector(userIdSelector)
+                .innerHTML.includes('Start');
+          },
+          userIdSelector,
+          {timeout: 1000},
+      );
       const currentUser = await page.innerText(userIdSelector);
       expect(currentUser).toBe('Start Queue');
     });
@@ -76,12 +81,10 @@ describe('Admin page', () => {
       const href = await shareLink.getAttribute('href');
       expect(href).toMatch(/\/queue.html/);
       const userPage = await context.newPage();
-      await userPage.goto(
-          href,
-      );
+      await userPage.goto(href);
       await userPage.waitForSelector(userPageAdminMessageSelector);
-      const getAdminMessage = () => userPage
-          .innerText(userPageAdminMessageSelector);
+      const getAdminMessage = () =>
+        userPage.innerText(userPageAdminMessageSelector);
       expect(await getAdminMessage()).not.toMatch(testMessage);
 
       await page.waitForSelector(submitAdminMessageSelector);

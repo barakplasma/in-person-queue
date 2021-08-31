@@ -21,7 +21,11 @@ describe('User page', () => {
     page = (await e2e).page;
     context = (await e2e).context;
 
-    await page.waitForSelector(navigateToUserPageSelector).catch((reason) => console.error('did not find join queue selector because', reason));
+    await page
+        .waitForSelector(navigateToUserPageSelector)
+        .catch((reason) =>
+          console.error('did not find join queue selector because', reason),
+        );
   });
 
   afterAll(async () => {

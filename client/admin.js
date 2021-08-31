@@ -17,14 +17,17 @@ import {
 // import {} from 'user';
 import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
-const adminSocket = io(urlSearchParams.has('location') ?
-  `${config['socket.io server host']}/admin` :
-  `${config['socket.io server host']}/`, {
-  auth: {
-    queue: urlSearchParams.get('location'),
-    password: urlSearchParams.get('password'),
+const adminSocket = io(
+  urlSearchParams.has('location') ?
+    `${config['socket.io server host']}/admin` :
+    `${config['socket.io server host']}/`,
+  {
+    auth: {
+      queue: urlSearchParams.get('location'),
+      password: urlSearchParams.get('password'),
+    },
   },
-});
+);
 
 const roomSocket = makeRoomSocket();
 
@@ -33,7 +36,7 @@ function getAdminMessageText() {
    * @type {HTMLTextAreaElement?}
    */
   const el = document.querySelector('textarea[name="edit-admin-message"]');
-  const html = el && el.value || '';
+  const html = (el && el.value) || '';
   return html;
 }
 
@@ -53,16 +56,19 @@ function currentUserDone() {
 
 function generateShareURL() {
   const params = new URLSearchParams(location.search);
-  const shareLinkUrl = new URL(location.origin +
-    location.pathname.replace(/admin\.html/, 'queue.html'));
+  const shareLinkUrl = new URL(
+      location.origin + location.pathname.replace(/admin\.html/, 'queue.html'),
+  );
   shareLinkUrl.searchParams.set('location', params.get('location'));
   return shareLinkUrl;
 }
 
 function generateShareLink() {
   const shareLinkUrl = generateShareURL();
-  updateHTML('#shareLink',
-      `link to join queue as user: <a href="${shareLinkUrl.href}">link</a><a style="margin-left: .5rem" id="shareButton"></a>`);
+  updateHTML(
+      '#shareLink',
+      `link to join queue as user: <a href="${shareLinkUrl.href}">link</a><a style="margin-left: .5rem" id="shareButton"></a>`,
+  );
   generateShareButton();
 }
 
@@ -120,8 +126,7 @@ function iAmDone() {
   adminSocket.emit('admin-done', iAmDoneRedirect);
 }
 function handleClick(selector, cb) {
-  document.querySelector(selector)?.
-      addEventListener('click', cb);
+  document.querySelector(selector)?.addEventListener('click', cb);
 }
 
 [
@@ -130,6 +135,4 @@ function handleClick(selector, cb) {
   ['#current-user-done', currentUserDone],
   ['#refresh-queue', refreshAdminPage],
   ['#queueLengthContainer', refreshAdminPage],
-].forEach(([selector, cb]) =>
-  handleClick(selector, cb),
-);
+].forEach(([selector, cb]) => handleClick(selector, cb));

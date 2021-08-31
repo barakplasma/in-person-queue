@@ -23,11 +23,14 @@ import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7Kseu
  */
 let userId;
 
-const userSocket = io(urlSearchParams.has('location') ?
-  `${config['socket.io server host']}/user` :
-  `${config['socket.io server host']}/`, {
-  transports: ['websocket', 'polling'],
-});
+const userSocket = io(
+  urlSearchParams.has('location') ?
+    `${config['socket.io server host']}/user` :
+    `${config['socket.io server host']}/`,
+  {
+    transports: ['websocket', 'polling'],
+  },
+);
 
 function hasUserId() {
   return urlSearchParams.has('userId');
@@ -77,7 +80,8 @@ function getUserId() {
 
 export function addSelfToQueue() {
   const userId = getUserId();
-  userSocket.emit('add-user',
+  userSocket.emit(
+      'add-user',
       getQueueFromAddressOrCache(),
       getUserId(),
       userSocket.id,
@@ -110,7 +114,6 @@ export function iAmDone() {
   userSocket.emit('user-done', iAmDoneRedirect);
 }
 
-
 function isUserPage() {
   return document.querySelector('#userId');
 }
@@ -125,8 +128,8 @@ export function displayAdminMessage({adminMessage}) {
 
 export function displayMyPosition(msg) {
   const {currentPosition} = msg;
-  const displayPosition = currentPosition === null ?
-    'Not in queue' : currentPosition + 1;
+  const displayPosition =
+    currentPosition === null ? 'Not in queue' : currentPosition + 1;
   updateHTML('#position-in-queue', displayPosition);
   document.title = `Queue: ${displayPosition} - ${getUserId()}`;
 }
