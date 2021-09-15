@@ -36,7 +36,7 @@ An intended use case of this project is to enable medical professionals, or the 
 
 ## User Guide
 
-[Implemented: Create queue] Navigate to an instance of HisoonNumber, such as [https://barakplasma.github.io/in-person-queue/client/](https://barakplasma.github.io/in-person-queue/client/) and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
+[Implemented: Create queue] Navigate to an instance of In-Person-Queue, such as https://barakplasma.github.io/in-person-queue/client/ and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
 This prompts the browser to ask permission to do a geolocation check. This geolocation is used to generate an OpenLocationCode, which is used as the name of the queue. Only the queue admin must provide geolocation access.
 
 [Implemented: ADMIN URL]

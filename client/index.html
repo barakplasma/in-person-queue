@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HisunNumber - Home</title>
+    <title>In-Person-Queue</title>
     <script
       defer
       src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
@@ -21,7 +21,8 @@
 
   <body>
     <header>
-      <h1>HisoonNumber</h1>
+      <h1>In-Person-Queue</h1>
+      <a href="https://barakplasma.github.io/in-person-queue/">About</a>
     </header>
     <main>
       <section>
@@ -29,17 +30,16 @@
           <h3>Nearby Queues</h3>
           <div id="warning"></div>
           <div id="queues"></div>
+          <p>Needs location permissions to find queues near you</p>
         </aside>
       </section>
+      <hr>
       <section>
         <button id="becomeAdmin">
-          Create a <mark>new</mark> queue at my current location
+          Create <mark>new</mark> queue at my location
         </button>
       </section>
     </main>
-    <footer>
-      <a href="https://barakplasma.github.io/in-person-queue/">About</a>
-    </footer>
     <style>
       body {
         text-align: center;
