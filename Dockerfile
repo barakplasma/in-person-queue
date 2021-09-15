@@ -1,5 +1,4 @@
 FROM node:lts-alpine
-RUN apk add git openssh
 ARG NODE_ENV_ARG=production
 ENV NODE_ENV=$NODE_ENV_ARG
 WORKDIR /usr/src/app
