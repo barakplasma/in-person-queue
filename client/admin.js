@@ -94,8 +94,8 @@ function generateShareButton() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  joinQueue('admin');
-  adminSocket.emit('join-queue', getQueueFromAddressOrCache());
+  joinQueue();
+  adminSocket.emit('join-queue', getQueueFromAddressOrCache(), () => {});
   generateShareLink();
   refreshAdminPage();
 });

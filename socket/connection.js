@@ -1,4 +1,16 @@
-const {addUserToQueue, removeUserFromQueue, createQueue, getPosition, getQueueLength, getHeadOfQueue, shiftQueue, checkAuthForQueue, updateQueueMetadata, getQueueMetadata, getClosestQueues} = require('../queue/queue');
+const {
+  addUserToQueue,
+  removeUserFromQueue,
+  createQueue,
+  getPosition,
+  getQueueLength,
+  getHeadOfQueue,
+  shiftQueue,
+  checkAuthForQueue,
+  updateQueueMetadata,
+  getQueueMetadata,
+  getClosestQueues,
+} = require('../queue/queue');
 const {Server} = require('socket.io');
 
 function decodeQueue(queue) {
@@ -35,6 +47,7 @@ module.exports.connection = function(server) {
    */
   const roomConnection = (roomSocket) => {
     let queueCache;
+    let userCache;
     function log(msg, other) {
       console.log(Object.assign({
         EventMessage: msg,
@@ -42,15 +55,16 @@ module.exports.connection = function(server) {
       }, other));
     }
 
-    roomSocket.on('join-queue', async (queue, type, ack) => {
+    roomSocket.on('join-queue', (
+        queue,
+    ) => {
       try {
         queueCache = decodeQueue(queue);
         roomSocket.join(queueCache);
-        ack();
-        log('person joined', {type});
+        log('person joined');
         refreshQueue();
       } catch (error) {
-        console.info(queue, type);
+        console.info(queue);
         console.error(error);
       }
     });
@@ -59,23 +73,53 @@ module.exports.connection = function(server) {
       const queueLength = await getQueueLength(queueCache);
       const adminMessage = (await getQueueMetadata(queueCache)).adminMessage;
       const update = {queueLength, adminMessage};
-      roomSocket.volatile.to(queueCache).emit('refresh-queue', update);
+      roomSocket.to(queueCache).emit('refresh-queue', update);
       log('refreshed-queue', update);
     }
 
-    roomSocket.on('get-queue-length', async (ack) => {
-      const queueLength = await getQueueLength(queueCache);
+    roomSocket.on('get-queue-length', async (queue, ack) => {
+      const queueLength = await getQueueLength(decodeQueue(queue));
       ack({queueLength});
     });
 
-    roomSocket.on('get-admin-message', async (ack) => {
-      const adminMessage = (await getQueueMetadata(queueCache)).adminMessage;
+    roomSocket.on('get-admin-message', async (queue, ack) => {
+      const adminMessage = (await getQueueMetadata(decodeQueue(queue)))
+          .adminMessage;
       ack({adminMessage});
     });
 
     roomSocket.on('add-to-queue', refreshQueue);
     roomSocket.on('refresh-queue', refreshQueue);
     roomSocket.on('remove-from-queue', refreshQueue);
+
+    const updateMyPosition = async (userId, ack) => {
+      const currentPosition = await getPosition(queueCache, userId);
+      console.debug({currentPosition, userId, queueCache});
+      ack({currentPosition});
+      log('user-update-position', {currentPosition});
+    };
+
+    roomSocket.on('get-my-position', updateMyPosition);
+
+    roomSocket.on('add-user', async (queue, userId, socketId, ack) => {
+      queueCache = decodeQueue(queue);
+      userCache = userId;
+      await addUserToQueue(queueCache, userCache);
+      ack();
+      log('user-self-add');
+      log({socketId});
+    });
+
+    roomSocket.on('user-done', async (queue, userId, ack) => {
+      await removeUserFromQueue(decodeQueue(queue), userId);
+      ack();
+      log('user-self-done');
+      refreshQueue();
+    });
+
+    roomSocket.on('disconnect', () => {
+      log(`user disconnected`);
+    });
   };
 
   roomNamespace.on('connection', roomConnection);
@@ -114,8 +158,9 @@ module.exports.connection = function(server) {
       log('admin quit');
     });
 
-    adminSocket.on('join-queue', (queue) => {
+    adminSocket.on('join-queue', (queue, ack) => {
       queueCache = decodeQueue(queue);
+      ack();
     });
 
     adminSocket.on('current-user-done', async (ack) => {
@@ -144,58 +189,4 @@ module.exports.connection = function(server) {
   }
 
   adminNamespace.use(checkAdminAuthMiddleware);
-
-  const userNamespace = io.of('/user');
-  /**
-   *
-   * @param {Socket} userSocket
-   */
-  const userConnection = (userSocket) => {
-    let userCache;
-    let queueCache;
-
-    function log(msg, other) {
-      console.log(Object.assign({
-        EventMessage: msg,
-        queue: queueCache,
-        userId: userCache,
-      }, other));
-    }
-
-    userSocket.on('join-queue', (queue, userId, socketId, ack) => {
-      userCache = userId;
-      queueCache = decodeQueue(queue);
-      ack();
-      log('user-joined-queue');
-      log({socketId});
-    });
-
-    const updateMyPosition = async (ack) => {
-      const currentPosition = await getPosition(queueCache, userCache);
-      ack({currentPosition});
-      log('user-update-position', {currentPosition});
-    };
-
-    userSocket.on('get-my-position', updateMyPosition);
-
-    userSocket.on('add-user', async (queue, userId, socketId, ack) => {
-      queueCache = decodeQueue(queue);
-      userCache = userId;
-      await addUserToQueue(queueCache, userCache);
-      ack();
-      log('user-self-add');
-      log({socketId});
-    });
-
-    userSocket.on('user-done', async (ack) => {
-      await removeUserFromQueue(queueCache, userCache);
-      ack();
-      log('user-self-done');
-    });
-
-    userSocket.on('disconnect', () => {
-      log(`user disconnected`);
-    });
-  };
-  userNamespace.on('connection', userConnection);
 };

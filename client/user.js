@@ -23,11 +23,7 @@ import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7Kseu
  */
 let userId;
 
-const userSocket = io(urlSearchParams.has('location') ?
-  `${config['socket.io server host']}/user` :
-  `${config['socket.io server host']}/`, {
-  transports: ['websocket', 'polling'],
-});
+const roomSocket = makeRoomSocket();
 
 function hasUserId() {
   return urlSearchParams.has('userId');
@@ -47,17 +43,12 @@ document.addEventListener('DOMContentLoaded', () => {
   setTimeout(refreshQueue, 500);
 });
 document.addEventListener('DOMContentLoaded', async () => {
-  joinQueue('user');
+  joinQueue();
   if (hasUserId()) {
-    await new Promise((resolve) => {
-      userSocket.emit(
-          'join-queue',
-          getQueueFromAddressOrCache(),
-          getUserId(),
-          userSocket.id,
-          resolve,
-      );
-    });
+    roomSocket.emit(
+        'join-queue',
+        getQueueFromAddressOrCache(),
+    );
   }
   displayLocation();
   displayJoinedState();
@@ -77,10 +68,10 @@ function getUserId() {
 
 export function addSelfToQueue() {
   const userId = getUserId();
-  userSocket.emit('add-user',
+  roomSocket.emit('add-user',
       getQueueFromAddressOrCache(),
       getUserId(),
-      userSocket.id,
+      roomSocket.id,
       displayJoinedState,
   );
   roomSocket.emit('add-to-queue');
@@ -88,13 +79,11 @@ export function addSelfToQueue() {
   location.search = urlSearchParams.toString();
 }
 
-const roomSocket = makeRoomSocket();
-
 roomSocket.on('refresh-queue', getMyPosition);
 roomSocket.on('refresh-queue', displayAdminMessage);
 
 export function getMyPosition() {
-  userSocket.emit('get-my-position', displayMyPosition);
+  roomSocket.emit('get-my-position', userId, displayMyPosition);
 }
 
 export function refreshQueue() {
@@ -107,7 +96,8 @@ export function refreshQueue() {
 
 export function iAmDone() {
   roomSocket.emit('remove-from-queue');
-  userSocket.emit('user-done', iAmDoneRedirect);
+  roomSocket.emit('user-done', getQueueFromAddressOrCache(),
+      getUserId(), iAmDoneRedirect);
 }
 
 
@@ -131,5 +121,5 @@ export function displayMyPosition(msg) {
   document.title = `Queue: ${displayPosition} - ${getUserId()}`;
 }
 
-userSocket.on('update-queue-position', displayMyPosition);
-userSocket.on('update-queue-position', vibrate);
+roomSocket.on('update-queue-position', displayMyPosition);
+roomSocket.on('update-queue-position', vibrate);

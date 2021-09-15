@@ -5,6 +5,20 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Launch via NPM",
+      "request": "launch",
+      "runtimeArgs": [
+        "run-script",
+        "start"
+      ],
+      "smartStep": true,
+      "runtimeExecutable": "npm",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "pwa-node"
+    },
+    {
       "name": "Debug Jest Tests",
       "type": "node",
       "request": "launch",
@@ -23,15 +37,6 @@
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "port": 9229
-    },
-    {
-      "type": "pwa-node",
-      "request": "launch",
-      "name": "Launch Program",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "program": "${workspaceFolder}/server.js"
     }
   ]
 }
