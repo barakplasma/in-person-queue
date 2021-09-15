@@ -11,7 +11,7 @@
     "test:e2e": "jest --testPathPattern e2e.test.js --runInBand --silent",
     "test:unit": "jest --testPathIgnorePatterns e2e.test.js --runInBand --silent",
     "test:ci": "start-server-and-test 3000",
-    "lint": "eslint --fix ."
+    "lint": "prettier --write . && eslint --fix ."
   },
   "keywords": [
     "redis",
@@ -37,6 +37,9 @@
     "@types/jest": "^27.0.1",
     "eslint": "^7.32.0",
     "eslint-config-google": "^0.14.0",
+    "eslint-plugin-cypress": "^2.11.3",
+    "eslint-plugin-jest": "^24.4.0",
+    "prettier": "2.3.2",
     "jest": "^27.2.0",
     "nodemon": "^2.0.12",
     "playwright": "^1.14.1",

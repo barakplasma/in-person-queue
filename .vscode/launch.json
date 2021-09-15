@@ -7,15 +7,10 @@
     {
       "name": "Launch via NPM",
       "request": "launch",
-      "runtimeArgs": [
-        "run-script",
-        "start"
-      ],
+      "runtimeArgs": ["run-script", "start"],
       "smartStep": true,
       "runtimeExecutable": "npm",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "type": "pwa-node"
     },
     {
@@ -23,7 +18,7 @@
       "type": "node",
       "request": "launch",
       "env": {
-        "HEADLESS": "true",
+        "HEADLESS": "true"
         // "PWDEBUG": "1",
       },
       "runtimeArgs": [

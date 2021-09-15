@@ -6,7 +6,8 @@ function bareBonesStaticServer(req, res) {
   if (req.url === '/') {
     req.url = 'index.html';
   }
-  fs.readFile(__dirname + '/client/' + new URL(req.url, 'http://example.com').pathname,
+  fs.readFile(
+      __dirname + '/client/' + new URL(req.url, 'http://example.com').pathname,
       function(err, data) {
         if (err) {
           res.writeHead(404);
@@ -18,9 +19,9 @@ function bareBonesStaticServer(req, res) {
         }
         res.writeHead(200);
         res.end(data);
-      });
+      },
+  );
 }
-
 
 const {createTerminus} = require('@godaddy/terminus');
 const terminusOptions = require('./queue/shutdown').terminusOptions;
@@ -31,5 +32,5 @@ require('./socket/connection').connection(server);
 createTerminus(server, terminusOptions);
 
 server.listen(PORT, () => {
-  console.log('listening on *:'+PORT);
+  console.log('listening on *:' + PORT);
 });

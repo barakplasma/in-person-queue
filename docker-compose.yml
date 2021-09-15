@@ -11,7 +11,7 @@ services:
     ports:
       - 6379:6379
   app:
-    build: 
+    build:
       context: .
       args:
         - NODE_ENV_ARG=development

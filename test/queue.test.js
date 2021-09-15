@@ -36,9 +36,17 @@ describe('Chisonnumber', () => {
       it('should be able to create a queue and save it\'s password', () => {
         return testUtil.createQueue().then((res) => {
           expect(res).toBe(undefined);
-          expect(console.log).toHaveBeenLastCalledWith({EventName: 'created queue', queue: testQueueId});
-          expect(queue._redis.zadd).toHaveBeenLastCalledWith(testQueueId, [1, 'Start Queue']);
-          expect(queue._redis.hset).toHaveBeenCalledWith(testQueueMetadataKey, {'password': testPassword});
+          expect(console.log).toHaveBeenLastCalledWith({
+            EventName: 'created queue',
+            queue: testQueueId,
+          });
+          expect(queue._redis.zadd).toHaveBeenLastCalledWith(testQueueId, [
+            1,
+            'Start Queue',
+          ]);
+          expect(queue._redis.hset).toHaveBeenCalledWith(testQueueMetadataKey, {
+            password: testPassword,
+          });
         });
       });
     });
@@ -46,27 +54,36 @@ describe('Chisonnumber', () => {
     describe('Get Closest Queues', () => {
       it('should get closest queue', () => {
         return testUtil.createQueue().then(async () => {
-          const expectedClosestQueue = Buffer.from('8F2C4M6J+9V', 'utf8').toString('base64');
+          const expectedClosestQueue = Buffer.from(
+              '8F2C4M6J+9V',
+              'utf8',
+          ).toString('base64');
           const closestQueues = await getClosestQueues(expectedClosestQueue);
           expect(closestQueues).toHaveLength(1);
-          expect(closestQueues).toContainEqual({'distance': '0.2295', 'queue': expectedClosestQueue});
+          expect(closestQueues).toContainEqual({
+            distance: '0.2295',
+            queue: expectedClosestQueue,
+          });
         });
       });
     });
 
-
     describe('Check Authorization for Queue Admin', () => {
       it('should reject incorrect queue password', async () => {
         await queue.createQueue(testQueueId, testPassword);
-        return queue.checkAuthForQueue({queue: testQueueId, password: 'wrong password'}).then((res) => {
-          expect(res).toBeFalsy();
-        });
+        return queue
+            .checkAuthForQueue({queue: testQueueId, password: 'wrong password'})
+            .then((res) => {
+              expect(res).toBeFalsy();
+            });
       });
       it('should verify queue password is valid', async () => {
         await queue.createQueue(testQueueId, testPassword);
-        return queue.checkAuthForQueue({queue: testQueueId, password: testPassword}).then((res) => {
-          expect(res).toBeTruthy();
-        });
+        return queue
+            .checkAuthForQueue({queue: testQueueId, password: testPassword})
+            .then((res) => {
+              expect(res).toBeTruthy();
+            });
       });
     });
 
@@ -118,7 +135,10 @@ describe('Chisonnumber', () => {
         await queue.addUserToQueue(testQueueId, 'c');
         await queue.addUserToQueue(testQueueId, 'd');
         expect(await queue.getHeadOfQueue(testQueueId)).toBe('Start Queue');
-        expect(await queue.shiftQueue(testQueueId)).toStrictEqual(['Start Queue', '1']);
+        expect(await queue.shiftQueue(testQueueId)).toStrictEqual([
+          'Start Queue',
+          '1',
+        ]);
         return queue.getHeadOfQueue(testQueueId).then((res) => {
           expect(res).toBe('b');
         });
@@ -129,26 +149,41 @@ describe('Chisonnumber', () => {
       it('should add users and get the right count', async () => {
         await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b');
-        return queue.addUserToQueue(testQueueId, 'c').then(() => {
-          return queue.getQueueLength(testQueueId);
-        }).then((countUsers) => {
-          // first user is "Start Queue"
-          expect(countUsers).toBe(3);
-          expect(console.log).toHaveBeenLastCalledWith({'EventName': 'added to queue', 'queue': testQueueId, 'userId': 'c', 'endOfQueueScore': 3});
-        });
+        return queue
+            .addUserToQueue(testQueueId, 'c')
+            .then(() => {
+              return queue.getQueueLength(testQueueId);
+            })
+            .then((countUsers) => {
+            // first user is "Start Queue"
+              expect(countUsers).toBe(3);
+              expect(console.log).toHaveBeenLastCalledWith({
+                EventName: 'added to queue',
+                queue: testQueueId,
+                userId: 'c',
+                endOfQueueScore: 3,
+              });
+            });
       });
 
       it('should try to add existing user and have same count', async () => {
         await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b');
         await queue.addUserToQueue(testQueueId, 'c'); // add a second time
-        return queue.addUserToQueue(testQueueId, 'c').then(() => {
-          return queue.getQueueLength(testQueueId);
-        }).then((countUsers) => {
-          // first user is "Start Queue"
-          expect(countUsers).toBe(3);
-          expect(console.log).toHaveBeenLastCalledWith({'EventName': 'user already in queue', 'queue': testQueueId, 'userId': 'c'});
-        });
+        return queue
+            .addUserToQueue(testQueueId, 'c')
+            .then(() => {
+              return queue.getQueueLength(testQueueId);
+            })
+            .then((countUsers) => {
+            // first user is "Start Queue"
+              expect(countUsers).toBe(3);
+              expect(console.log).toHaveBeenLastCalledWith({
+                EventName: 'user already in queue',
+                queue: testQueueId,
+                userId: 'c',
+              });
+            });
       });
     });
 
@@ -165,35 +200,44 @@ describe('Chisonnumber', () => {
       it('should remove a user and get the right count', async () => {
         await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b');
-        return queue.removeUserFromQueue(testQueueId, 'c').then(() => {
-          return queue.getQueueLength(testQueueId);
-        }).then((countUsers) => {
-          // first user is "Start Queue"
-          expect(countUsers).toBe(2);
-        });
+        return queue
+            .removeUserFromQueue(testQueueId, 'c')
+            .then(() => {
+              return queue.getQueueLength(testQueueId);
+            })
+            .then((countUsers) => {
+            // first user is "Start Queue"
+              expect(countUsers).toBe(2);
+            });
       });
 
       it('should try to remove non-existing user and have same count', async () => {
         await testUtil.createQueue();
         await queue.addUserToQueue(testQueueId, 'b');
         await queue.addUserToQueue(testQueueId, 'c');
-        return queue.removeUserFromQueue(testQueueId, 'd').then(() => {
-          return queue.getQueueLength(testQueueId);
-        }).then((countUsers) => {
-          // first user is "Start Queue"
-          expect(countUsers).toBe(3);
-        });
+        return queue
+            .removeUserFromQueue(testQueueId, 'd')
+            .then(() => {
+              return queue.getQueueLength(testQueueId);
+            })
+            .then((countUsers) => {
+            // first user is "Start Queue"
+              expect(countUsers).toBe(3);
+            });
       });
 
       it('should try to remove from empty queue', async () => {
         await testUtil.createQueue();
         await queue.removeUserFromQueue(testQueueId, 'Start Queue');
-        return queue.removeUserFromQueue(testQueueId, 'd').then(() => {
-          return queue.getQueueLength(testQueueId);
-        }).then((countUsers) => {
-          // first user is "Start Queue"
-          expect(countUsers).toBe(0);
-        });
+        return queue
+            .removeUserFromQueue(testQueueId, 'd')
+            .then(() => {
+              return queue.getQueueLength(testQueueId);
+            })
+            .then((countUsers) => {
+            // first user is "Start Queue"
+              expect(countUsers).toBe(0);
+            });
       });
     });
   });

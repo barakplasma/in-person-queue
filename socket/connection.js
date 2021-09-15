@@ -49,15 +49,18 @@ module.exports.connection = function(server) {
     let queueCache;
     let userCache;
     function log(msg, other) {
-      console.log(Object.assign({
-        EventMessage: msg,
-        queue: queueCache,
-      }, other));
+      console.log(
+          Object.assign(
+              {
+                EventMessage: msg,
+                queue: queueCache,
+              },
+              other,
+          ),
+      );
     }
 
-    roomSocket.on('join-queue', (
-        queue,
-    ) => {
+    roomSocket.on('join-queue', (queue) => {
       try {
         queueCache = decodeQueue(queue);
         roomSocket.join(queueCache);
@@ -133,10 +136,15 @@ module.exports.connection = function(server) {
   const adminConnection = (adminSocket) => {
     let queueCache;
     function log(msg, other) {
-      console.log(Object.assign({
-        EventMessage: msg,
-        queue: queueCache,
-      }, other));
+      console.log(
+          Object.assign(
+              {
+                EventMessage: msg,
+                queue: queueCache,
+              },
+              other,
+          ),
+      );
     }
 
     const updateQueueForAdmin = async (ack) => {
@@ -171,16 +179,17 @@ module.exports.connection = function(server) {
   };
   adminNamespace.on('connection', adminConnection);
 
-
   /**
    *
    * @param {Socket} socket
    * @param {Function} next
    */
   function checkAdminAuthMiddleware(socket, next) {
-    if (socket.handshake.auth.queue &&
+    if (
       socket.handshake.auth.queue &&
-      checkAuthForQueue(socket.handshake.auth)) {
+      socket.handshake.auth.queue &&
+      checkAuthForQueue(socket.handshake.auth)
+    ) {
       next();
     } else {
       const err = new Error('not authorized');

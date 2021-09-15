@@ -1,9 +1,5 @@
 // / <reference types="globals.d.ts">
-import {
-  config,
-  updateHTML,
-} from './sharedClientUtils.js';
-// import {} from 'user';
+import {config, updateHTML} from './sharedClientUtils.js';
 import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
 const homeSocket = io(`${config['socket.io server host']}/`, {
@@ -29,13 +25,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       <td>${Math.ceil(parseFloat(distance))} meters</td>
     </tr>
     `;
-    const tableRows = queues.map((q) => {
-      if (typeof q.queue === 'string' && typeof q.distance === 'string') {
-        return generateTableRow(q.queue, q.distance);
-      } else {
-        console.warn({q, error: 'wrong types for table rows'});
-      }
-    }).join('\n');
+    const tableRows = queues
+        .map((q) => {
+          if (typeof q.queue === 'string' && typeof q.distance === 'string') {
+            return generateTableRow(q.queue, q.distance);
+          } else {
+            console.warn({q, error: 'wrong types for table rows'});
+          }
+        })
+        .join('\n');
     const html = `
     <table>
       <thead>
@@ -69,8 +67,10 @@ function getLocation() {
 
       function error() {
         // alert('Unable to retrieve your location');
-        updateHTML('#warning',
-            '<strong>Unable to retrieve your location</strong>');
+        updateHTML(
+            '#warning',
+            '<strong>Unable to retrieve your location</strong>',
+        );
         reject(Error('Unable to retrieve your location'));
       }
 
@@ -85,6 +85,8 @@ function getLocation() {
  */
 function generateQueueFromLatLonConcat(latLonConcat) {
   const [latitude, longitude] = latLonConcat.split(':').map(parseFloat);
+  // @ts-ignore
+  // eslint-disable-next-line no-undef
   const currentOpenLocationCode = OpenLocationCode.encode(latitude, longitude);
   const queue = btoa(currentOpenLocationCode);
   return queue;
@@ -95,17 +97,16 @@ function generateQueueFromLocation() {
 }
 
 function createQueue() {
-  getLocation().then(generateQueueFromLatLonConcat).then((queue) => {
-    const password = btoa(
-        window.
-            crypto
-            .getRandomValues(
-                new Uint8Array(6),
-            ).toString());
-    homeSocket.emit('create-queue', queue, password, () => {
-      redirectToAdminPage(queue, password);
-    });
-  });
+  getLocation()
+      .then(generateQueueFromLatLonConcat)
+      .then((queue) => {
+        const password = btoa(
+            window.crypto.getRandomValues(new Uint8Array(6)).toString(),
+        );
+        homeSocket.emit('create-queue', queue, password, () => {
+          redirectToAdminPage(queue, password);
+        });
+      });
 }
 
 document.querySelector('#becomeAdmin')?.addEventListener('click', createQueue);

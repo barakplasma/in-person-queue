@@ -10,16 +10,17 @@ const PORT = process.env.PORT || '3000';
  * @param {URL} url
  * @return {Promise<{statusCode: number, url: URL}>}
  */
-const getStatusOfUrl = (url) => new Promise((resolve, reject) => {
-  http.get(url, (res) => {
-    const {statusCode} = res;
-    if (statusCode === 200) {
-      resolve({statusCode, url});
-    } else {
-      reject(Error('bad status code'));
-    }
+const getStatusOfUrl = (url) =>
+  new Promise((resolve, reject) => {
+    http.get(url, (res) => {
+      const {statusCode} = res;
+      if (statusCode === 200) {
+        resolve({statusCode, url});
+      } else {
+        reject(Error('bad status code'));
+      }
+    });
   });
-});
 
 /**
  * @type {import('@godaddy/terminus').TerminusOptions}
@@ -46,7 +47,9 @@ const terminusOptions = {
         getStatusOfUrl(new URL(`http://localhost:${PORT}/`)),
         getStatusOfUrl(new URL(`http://localhost:${PORT}/admin.html`)),
         getStatusOfUrl(new URL(`http://localhost:${PORT}/queue.html`)),
-        _redis.status === 'ready' ? Promise.resolve({'redis status': _redis.status}) : Promise.reject(new Error(`redis status: ${_redis.status}`)),
+        _redis.status === 'ready' ?
+          Promise.resolve({'redis status': _redis.status}) :
+          Promise.reject(new Error(`redis status: ${_redis.status}`)),
       ]);
     },
   },

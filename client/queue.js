@@ -17,11 +17,14 @@ import {
 import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
 export function makeRoomSocket() {
-  return io(urlSearchParams.has('location') ?
-  `${config['socket.io server host']}/room` :
-  `${config['socket.io server host']}/`, {
-    transports: ['websocket', 'polling'],
-  });
+  return io(
+    urlSearchParams.has('location') ?
+      `${config['socket.io server host']}/room` :
+      `${config['socket.io server host']}/`,
+    {
+      transports: ['websocket', 'polling'],
+    },
+  );
 }
 
 const roomSocket = makeRoomSocket();
@@ -33,8 +36,9 @@ export function refreshQueueLength() {
   });
 }
 
-document.querySelector('#queueLengthContainer')?.addEventListener(
-    'click', refreshQueueLength);
+document
+    .querySelector('#queueLengthContainer')
+    ?.addEventListener('click', refreshQueueLength);
 
 export function refreshAdminMessage() {
   return new Promise((resolve, reject) => {
@@ -48,7 +52,7 @@ export function displayQueueLength(msg) {
   updateHTML('#queueLengthCount', queueLength);
 }
 
-roomSocket.on('refresh-queue', ({queueLength, adminMessage})=>{
+roomSocket.on('refresh-queue', ({queueLength, adminMessage}) => {
   displayQueueLength({queueLength});
   displayAdminMessage({adminMessage});
   getMyPosition();
@@ -56,11 +60,7 @@ roomSocket.on('refresh-queue', ({queueLength, adminMessage})=>{
 });
 
 export function joinQueue() {
-  roomSocket
-      .emit(
-          'join-queue',
-          getQueueFromAddressOrCache(),
-      );
+  roomSocket.emit('join-queue', getQueueFromAddressOrCache());
 }
 
 function join() {
@@ -68,7 +68,9 @@ function join() {
   refreshQueue();
 }
 document.querySelector('#join-queue')?.addEventListener('click', join);
-document.querySelector('#refresh-queue')?.
-    addEventListener('click', refreshQueue);
-document.querySelectorAll('.done').forEach((d) => d.
-    addEventListener('click', iAmDone));
+document
+    .querySelector('#refresh-queue')
+    ?.addEventListener('click', refreshQueue);
+document
+    .querySelectorAll('.done')
+    .forEach((d) => d.addEventListener('click', iAmDone));

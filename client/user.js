@@ -45,10 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
 document.addEventListener('DOMContentLoaded', async () => {
   joinQueue();
   if (hasUserId()) {
-    roomSocket.emit(
-        'join-queue',
-        getQueueFromAddressOrCache(),
-    );
+    roomSocket.emit('join-queue', getQueueFromAddressOrCache());
   }
   displayLocation();
   displayJoinedState();
@@ -68,7 +65,8 @@ function getUserId() {
 
 export function addSelfToQueue() {
   const userId = getUserId();
-  roomSocket.emit('add-user',
+  roomSocket.emit(
+      'add-user',
       getQueueFromAddressOrCache(),
       getUserId(),
       roomSocket.id,
@@ -96,10 +94,13 @@ export function refreshQueue() {
 
 export function iAmDone() {
   roomSocket.emit('remove-from-queue');
-  roomSocket.emit('user-done', getQueueFromAddressOrCache(),
-      getUserId(), iAmDoneRedirect);
+  roomSocket.emit(
+      'user-done',
+      getQueueFromAddressOrCache(),
+      getUserId(),
+      iAmDoneRedirect,
+  );
 }
-
 
 function isUserPage() {
   return document.querySelector('#userId');
@@ -115,8 +116,8 @@ export function displayAdminMessage({adminMessage}) {
 
 export function displayMyPosition(msg) {
   const {currentPosition} = msg;
-  const displayPosition = currentPosition === null ?
-    'Not in queue' : currentPosition + 1;
+  const displayPosition =
+    currentPosition === null ? 'Not in queue' : currentPosition + 1;
   updateHTML('#position-in-queue', displayPosition);
   document.title = `Queue: ${displayPosition} - ${getUserId()}`;
 }
