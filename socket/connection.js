@@ -60,9 +60,7 @@ module.exports.connection = function(server) {
       );
     }
 
-    roomSocket.on('join-queue', (
-        queue,
-    ) => {
+    roomSocket.on('join-queue', (queue) => {
       try {
         queueCache = decodeQueue(queue);
         roomSocket.join(queueCache);

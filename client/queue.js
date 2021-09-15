@@ -60,11 +60,7 @@ roomSocket.on('refresh-queue', ({queueLength, adminMessage}) => {
 });
 
 export function joinQueue() {
-  roomSocket
-      .emit(
-          'join-queue',
-          getQueueFromAddressOrCache(),
-      );
+  roomSocket.emit('join-queue', getQueueFromAddressOrCache());
 }
 
 function join() {
