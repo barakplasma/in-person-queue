@@ -20,39 +20,39 @@
   </head>
 
   <body>
-    <p>HisoonNumber</p>
-    <main>
-      <h4>Message from your admin:</h4>
-      <p
-        id="admin-message"
-        style="overflow: scroll; max-height: 11vh; text-overflow: ellipsis"
-      >
-        Loading...
-      </p>
-      <section id="position-section">
-        <aside>
-          <h3>Queue Position</h3>
-          <mark id="position-in-queue">Not yet in queue</mark>
-          <p id="queueLengthContainer">
-            Queue Length: <span id="queueLengthCount">N/A</span>
-          </p>
-          <p id="userIdContainer">Your User Id: <span id="userId">N/A</span></p>
-          <p id="locationContainer">Location: <a id="location">N/A</a></p>
-        </aside>
-      </section>
-      <section>
-        <p>
-          <button id="join-queue">Join Queue</button>
-          <button id="refresh-queue">Refresh</button>
-          <button id="done-btn" class="done">Done</button>
+    <h4>Message from the admin:</h4>
+    <p
+      id="admin-message"
+      style="overflow: scroll; max-height: 11vh; text-overflow: ellipsis"
+    >
+      Loading...
+    </p>
+    <section id="position-section">
+      <aside>
+        <h3>Queue Position</h3>
+        <mark id="position-in-queue">Not yet in queue</mark>
+        <p id="queueLengthContainer">
+          Queue Length: <span id="queueLengthCount">N/A</span>
         </p>
-      </section>
-      <style>
-        body {
-          text-align: center;
-        }
-      </style>
-      <footer><a id="done-link" class="done">Leave Queue</a></footer>
-    </main>
+        <p id="userIdContainer">Your User Id: <span id="userId">N/A</span></p>
+        <p id="locationContainer">Location: <a id="location">N/A</a></p>
+      </aside>
+    </section>
+    <section>
+      <p>
+        <button id="join-queue">Join Queue</button>
+        <button id="refresh-queue">Refresh</button>
+        <button id="done-btn" class="done">Done</button>
+      </p>
+    </section>
+    <style>
+      body {
+        text-align: center;
+      }
+    </style>
+    <footer>
+      <a id="done-link" class="done">Leave Queue</a>
+      <h1>In-Person-Queue</h1>
+    </footer>
   </body>
 </html>

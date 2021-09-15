@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin of Queue</title>
+    <title>Queue Admin</title>
     <script
       defer
       src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
@@ -21,58 +21,58 @@
   </head>
 
   <body>
-    <p>HisoonNumber</p>
-    <main>
-      <section id="position-section">
-        <aside>
-          <h3>Current head of the queue</h3>
-          <p id="userIdContainer">UserId: <span id="userId">N/A</span></p>
-        </aside>
-      </section>
-      <section>
-        <p>
-          <button id="current-user-done">Current user done</button>
-          <button id="refresh-queue">Refresh</button>
+    <section id="position-section">
+      <aside>
+        <h3>Current head of the queue</h3>
+        <p id="userIdContainer">UserId: <span id="userId">N/A</span></p>
+      </aside>
+    </section>
+    <section>
+      <p>
+        <button id="current-user-done">Current user done</button>
+        <button id="refresh-queue">Refresh</button>
+      </p>
+    </section>
+    <section>
+      <aside>
+        <p id="queueLengthContainer">
+          Queue Length: <span id="queueLengthCount">N/A</span>
         </p>
-      </section>
-      <section>
-        <aside>
-          <p id="queueLengthContainer">
-            Queue Length: <span id="queueLengthCount">N/A</span>
-          </p>
-          <p id="locationContainer">Location: <a id="location">N/A</a></p>
-          <p id="shareLink"></p>
-        </aside>
-      </section>
-      <section>
-        <form action="">
-          <label for="edit-admin-message">Edit Admin Message:</label>
-          <textarea
-            name="edit-admin-message"
-            rows="8"
-            placeholder="Use this form to give your queue users some details on what this queue is for, what to do when it is their turn, and who you are."
-            id="admin-message"
-            spellcheck="true"
-            maxlength="1000"
-          ></textarea>
-          <button id="submit-admin-message" type="button">
-            update admin message
-          </button>
-        </form>
-      </section>
-      <style>
-        body {
-          text-align: center;
-        }
+        <p id="locationContainer">Location: <a id="location">N/A</a></p>
+        <p id="shareLink"></p>
+      </aside>
+    </section>
+    <section>
+      <form action="">
+        <label for="edit-admin-message">Edit Admin Message:</label>
+        <textarea
+          name="edit-admin-message"
+          rows="8"
+          placeholder="Use this form to give your queue users some details on what this queue is for, what to do when it is their turn, and who you are."
+          id="admin-message"
+          spellcheck="true"
+          maxlength="1000"
+        ></textarea>
+        <button id="submit-admin-message" type="button">
+          update admin message
+        </button>
+      </form>
+    </section>
+    <style>
+      body {
+        text-align: center;
+      }
 
-        textarea[name="edit-admin-message"] {
-          text-overflow: ellipsis;
-          width: 90%;
-          max-width: 90%;
-          min-width: 90%;
-        }
-      </style>
-      <footer><a class="done">Quit queue admin</a></footer>
-    </main>
+      textarea[name="edit-admin-message"] {
+        text-overflow: ellipsis;
+        width: 90%;
+        max-width: 90%;
+        min-width: 90%;
+      }
+    </style>
+    <footer>
+      <a class="done">Quit queue admin</a>
+      <h1>In-Person-Queue</h1>
+    </footer>
   </body>
 </html>
