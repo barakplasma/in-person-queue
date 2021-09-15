@@ -31,7 +31,7 @@ const roomSocket = makeRoomSocket();
 
 export function refreshQueueLength() {
   return new Promise((resolve, reject) => {
-    roomSocket.emit('get-queue-length', resolve);
+    roomSocket.emit('get-queue-length', getQueueFromAddressOrCache(), resolve);
     setTimeout(() => reject(Error('timeout queue length')), 5000);
   });
 }
@@ -42,8 +42,8 @@ document
 
 export function refreshAdminMessage() {
   return new Promise((resolve, reject) => {
-    roomSocket.emit('get-admin-message', resolve);
-    setTimeout(() => reject(Error('timeout admin')), 5000);
+    roomSocket.emit('get-admin-message', getQueueFromAddressOrCache(), resolve);
+    setTimeout(() => reject(Error('timeout refreshing admin message')), 5000);
   });
 }
 
@@ -59,10 +59,12 @@ roomSocket.on('refresh-queue', ({queueLength, adminMessage}) => {
   vibrate();
 });
 
-export function joinQueue(type) {
-  return new Promise((resolve) =>
-    roomSocket.emit('join-queue', getQueueFromAddressOrCache(), type, resolve),
-  );
+export function joinQueue() {
+  roomSocket
+      .emit(
+          'join-queue',
+          getQueueFromAddressOrCache(),
+      );
 }
 
 function join() {
