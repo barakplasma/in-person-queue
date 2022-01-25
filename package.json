@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@godaddy/terminus": "^4.9.0",
-    "dotenv": "^9.0.2",
+    "dotenv": "^14.3.0",
     "ioredis": "^4.27.9",
     "open-location-code": "https://github.com/google/open-location-code/tarball/main",
     "socket.io": "^4.1.3"
