@@ -41,7 +41,7 @@ describe('User page', () => {
     });
 
     it('should have an about link', async () => {
-      const aLink = await page.$('body > footer > a');
+      const aLink = await page.$('body > header > a');
       expect(await aLink.innerText()).toMatch('About');
       expect(await aLink.getAttribute('href')).toMatch(
           'https://barakplasma.github.io/in-person-queue/',
