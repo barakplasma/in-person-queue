@@ -26,7 +26,7 @@
     "url": "https://github.com/barakplasma/in-person-queue"
   },
   "dependencies": {
-    "@godaddy/terminus": "^4.9.0",
+    "@godaddy/terminus": "^4.10.2",
     "dotenv": "^9.0.2",
     "ioredis": "^4.27.9",
     "open-location-code": "https://github.com/google/open-location-code/tarball/main",
