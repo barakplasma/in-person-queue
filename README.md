@@ -6,7 +6,7 @@
 
 # in-person-queue
 
-- [Live version](https://barakplasma.github.io/in-person-queue/client/)
+- [Client without active Socket.io Server](https://barakplasma.github.io/in-person-queue/client/)
 - [Repository](https://github.com/barakplasma/in-person-queue)
 - [Development](#development)
 
