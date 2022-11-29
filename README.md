@@ -14,6 +14,8 @@
 
 TL:DR; This is a full stack website & server **solution for enabling arbitrary administrators to create location based queues with real-time updates**.
 
+On hold - nearly archived it
+
 ## Inspiration
 
 Due to COVID-19, there is a worldwide effort to provide vaccinations to every person on earth. The vaccines currently available must be administered by medical professionals, typically in non-traditional environments (outdoors in places with enough space to socially distance). People are told to patiently queue up (line up) for their vaccine. **We can do better than forcing people to stand in line in order to get vaccinated.**
