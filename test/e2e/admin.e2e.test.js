@@ -111,6 +111,15 @@ describe('Admin page', () => {
       page.on('dialog', (dialog) => dialog.accept());
       await page.click('#current-user-done');
 
+      await page.waitForFunction(
+          (userIdSelector, currentUser) => {
+            return document.querySelector(userIdSelector).innerHTML !==
+            currentUser;
+          },
+          [userIdSelector,
+          currentUser]
+      );
+
       expect(await getCurrentUser()).not.toEqual(currentUser);
     });
   });
