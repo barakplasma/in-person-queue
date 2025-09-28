@@ -1,8 +1,8 @@
-const RedisLib = require('ioredis');
-const REDIS_CONNECTION_STRING = process.env.REDIS_CONNECTION_STRING;
-const OpenLocationCode = require('open-location-code/js/src/openlocationcode');
+const Redis = require("ioredis");
+const REDIS_CONNECTION_STRING = process.env.REDIS_CONNECTION_STRING ?? 'redis://localhost:6379';
+const OpenLocationCode = require('open-location-code/js/src/openlocationcode.js');
 
-const redis = new RedisLib(REDIS_CONNECTION_STRING);
+const redis = new Redis.default(REDIS_CONNECTION_STRING);
 
 redis.defineCommand('addToEndOfQueue', {
   numberOfKeys: 1,
@@ -15,11 +15,16 @@ redis.defineCommand('addToEndOfQueue', {
   `,
 });
 
+/**
+ * @param {string} queue
+ * @param {string} userId
+ */
 async function addUserToQueue(queue, userId) {
   const userNotInListYet = await userNotInList(queue, userId);
   if (userNotInListYet) {
-    return await redis['addToEndOfQueue'](queue, userId).then(
-        (endOfQueueScore) => {
+    // @ts-ignore
+    return await redis.addToEndOfQueue(queue, userId).then(
+        (/** @type {string} */ endOfQueueScore) => {
           console.log({
             EventName: 'added to queue',
             queue,

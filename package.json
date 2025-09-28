@@ -1,6 +1,6 @@
 {
   "name": "chisonnumber",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "full stack queue tracking app",
   "main": "index.js",
   "scripts": {
@@ -18,7 +18,7 @@
     "socketio"
   ],
   "engines": {
-    "node": ">=14"
+    "node": ">=24"
   },
   "author": "Michael Salaverry",
   "license": "GPL-3.0-or-later",
@@ -26,24 +26,22 @@
     "url": "https://github.com/barakplasma/in-person-queue"
   },
   "dependencies": {
-    "@godaddy/terminus": "^4.9.0",
-    "dotenv": "^16.0.0",
-    "ioredis": "^5.0.3",
-    "open-location-code": "https://github.com/google/open-location-code/tarball/1796878d947c6e281e383e69bbd0821f82db9566",
-    "socket.io": "^4.1.3"
+    "@godaddy/terminus": "^4",
+    "dotenv": "^17",
+    "ioredis": "^5",
+    "open-location-code": "https://github.com/google/open-location-code/tarball/main",
+    "socket.io": "^4"
   },
   "devDependencies": {
-    "@types/ioredis": "^4.27.1",
-    "@types/jest": "^27.0.1",
-    "eslint": "^7.32.0",
-    "eslint-config-google": "^0.14.0",
-    "eslint-plugin-cypress": "^2.11.3",
-    "eslint-plugin-jest": "^24.4.0",
-    "prettier": "2.3.2",
-    "jest": "^27.2.0",
-    "nodemon": "^2.0.12",
-    "playwright": "^1.20.2",
-    "start-server-and-test": "^1.14.0"
+    "@types/jest": "^30",
+    "eslint": "^9",
+    "eslint-plugin-cypress": "^5",
+    "eslint-plugin-jest": "^29",
+    "prettier": "^3",
+    "jest": "^30",
+    "nodemon": "^3",
+    "playwright": "^1",
+    "start-server-and-test": "^2"
   },
   "browserslist": [
     "defaults",
