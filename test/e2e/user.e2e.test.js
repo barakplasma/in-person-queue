@@ -1,5 +1,4 @@
 const {setupE2E, cleanDB, setupDB} = require('./sharedE2E');
-const expect = require('expect');
 const teardown = require('./teardown');
 
 const userIdSelector = '#userId';
