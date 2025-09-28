@@ -101,7 +101,7 @@ describe('Admin page', () => {
       await page.click('#refresh-queue');
     });
 
-    it.skip('should be able to mark current user done', async () => {
+    it('should be able to mark current user done', async () => {
       async function getCurrentUser() {
         return await page.innerText(userIdSelector);
       }
@@ -112,12 +112,11 @@ describe('Admin page', () => {
       await page.click('#current-user-done');
 
       await page.waitForFunction(
-          (userIdSelector, currentUser) => {
+          (userIdSelector) => {
             return document.querySelector(userIdSelector).innerHTML !==
-            currentUser;
+            'Start Queue';
           },
-          [userIdSelector,
-          currentUser]
+          userIdSelector
       );
 
       expect(await getCurrentUser()).not.toEqual(currentUser);
