@@ -2,7 +2,11 @@ require('dotenv').config();
 const PORT = process.env.PORT || '3000';
 
 const fs = require('fs');
-function bareBonesStaticServer(req, res) {
+
+const {createTerminus} = require('@godaddy/terminus');
+const terminusOptions = require('./queue/shutdown').terminusOptions;
+
+const server = require('http').createServer(function bareBonesStaticServer(req, res) {
   if (req.url === '/') {
     req.url = 'index.html';
   }
@@ -14,6 +18,8 @@ function bareBonesStaticServer(req, res) {
           res.end(JSON.stringify(err));
           return;
         }
+        res.setHeader('Set-Cookie', `host=${req.headers['x-forwarded-host'] ?? 'localhost:3000'}`);
+        res.setHeader('content-type', 'text/html; charset=utf-8');
         if (req.url.endsWith('.js')) {
           res.setHeader('content-type', 'text/javascript; charset=utf-8');
         }
@@ -21,12 +27,8 @@ function bareBonesStaticServer(req, res) {
         res.end(data);
       },
   );
-}
+});
 
-const {createTerminus} = require('@godaddy/terminus');
-const terminusOptions = require('./queue/shutdown').terminusOptions;
-
-const server = require('http').createServer(bareBonesStaticServer);
 require('./socket/connection').connection(server);
 
 createTerminus(server, terminusOptions);

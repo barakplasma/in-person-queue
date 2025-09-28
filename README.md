@@ -57,20 +57,11 @@ People can click "Join a nearby queue" to see a list of nearby queues.
 
 This project is built to be self-hosted. There are no cloud dependencies. You'll need:
 
-- Node.js server (v14 or greater)
+- Node.js server (v24 or greater)
 - Redis database (v6 or greater)
 - domain name or public IP (free dynamic dns is enough)
 
 A $35 Raspberry Pi and a home internet connection can handle a significant amount of traffic, don't be afraid to use one.
-
-A very easy way to get started is with flyctl (config is included in this repo). They have a generous free tier, and managed redis for you.
-
-```sh
-$ brew install superfly/tap/flyctl
-$ flyctl auth signup
-$ flyctl deploy
-$ flyctl secrets set REDIS_CONNECTION_STRING=redis://YOUR CONNECTION STRING HERE
-```
 
 See the [development](#development) section for more details on getting started locally
 
@@ -117,8 +108,6 @@ The client website can be hosted as static files ANYWHERE, and this means this s
 4. visit `localhost:6363` (external port is configurable in the docker-compose.yml file)
 5. set your localhost environment variables there
 
-You could also grab a pre-built image from the Github actions "Deploy to Fly.io" step. Look for a line like, "registry.fly.io/chisoonnumber:deployment-1630155850" and use `docker pull registry.fly.io/chisoonnumber:deployment-1630155850` to work with it locally.
-
 Using `caddy reverse-proxy --to http://localhost:3000` can help you test locally with https. Use with `/setBackend` route;
 
 ### Localhost Environment Variables
@@ -128,7 +117,7 @@ Using `/setBackend` does this for you
 
 ```js
 window.localStorage.setItem("env", "test");
-window.localStorage.setItem("test host", "localhost:${port}");
+window.localStorage.setItem("host", "localhost:${port}");
 ```
 
 ### Debug

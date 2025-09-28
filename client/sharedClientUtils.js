@@ -5,8 +5,11 @@ export const urlSearchParams = new URLSearchParams(location.search);
 const env = localStorage.getItem('env') || 'prod';
 export const config = {
   'socket.io server host': {
-    prod: 'chisoonnumber.fly.dev',
-    test: localStorage.getItem('test host') || 'localhost:3000',
+    prod: document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("host="))
+    ?.split("=")[1] ?? 'localhost:3000',
+    test: localStorage.getItem('host') || 'localhost:3000',
   }[env],
 };
 
