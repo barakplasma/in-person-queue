@@ -46,6 +46,9 @@ module.exports.connection = function(server) {
    * @param {Socket} roomSocket
    */
   const roomConnection = (roomSocket) => {
+    /**
+     * @type {string}
+     */
     let queueCache;
     let userCache;
     function log(msg, other) {
@@ -73,6 +76,7 @@ module.exports.connection = function(server) {
     });
 
     async function refreshQueue() {
+      if (typeof queueCache !== 'string') return;
       const queueLength = await getQueueLength(queueCache);
       const adminMessage = (await getQueueMetadata(queueCache)).adminMessage;
       const update = {queueLength, adminMessage};

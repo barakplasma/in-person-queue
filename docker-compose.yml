@@ -1,27 +1,16 @@
-version: "3.8"
-
 services:
-  redis:
+  queue:
     image: "redis"
-    container_name: queue
     labels:
       kompose.service.expose: "false"
-    expose:
-      - 6379
-    ports:
-      - 6379:6379
-  app:
-    build:
-      context: .
-      args:
-        - NODE_ENV_ARG=development
-    command: npm run back-end-dev
+
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/javascript-node:24
     volumes:
-      - ./:/usr/src/app
-    links:
-      - redis
+      - ../..:/workspaces:cached
+    command: sleep infinity
     depends_on:
-      - redis
+      - queue
     labels:
       kompose.service.expose: "true"
     ports:

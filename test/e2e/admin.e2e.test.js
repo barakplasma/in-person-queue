@@ -1,5 +1,4 @@
-const {setupE2E, cleanDB, setupDB} = require('./sharedE2E');
-const expect = require('expect');
+const {setupE2E, cleanDB} = require('./sharedE2E');
 const teardown = require('./teardown');
 
 const userIdSelector = '#userId';
@@ -103,13 +102,24 @@ describe('Admin page', () => {
     });
 
     it('should be able to mark current user done', async () => {
-      const currentUser = await page.innerText(userIdSelector);
+      async function getCurrentUser() {
+        return await page.innerText(userIdSelector);
+      }
+      const currentUser = await getCurrentUser();
       expect(currentUser).toEqual('Start Queue');
 
       page.on('dialog', (dialog) => dialog.accept());
       await page.click('#current-user-done');
 
-      expect(await page.innerText(userIdSelector)).not.toEqual(currentUser);
+      await page.waitForFunction(
+          (userIdSelector) => {
+            return document.querySelector(userIdSelector).innerHTML !==
+            'Start Queue';
+          },
+          userIdSelector
+      );
+
+      expect(await getCurrentUser()).not.toEqual(currentUser);
     });
   });
 

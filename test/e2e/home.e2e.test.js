@@ -1,8 +1,7 @@
 const process = require('process');
 const port = process.env.PORT || '3000';
 
-const {setupE2E, cleanDB, setupDB} = require('./sharedE2E');
-const expect = require('expect');
+const {setupE2E, cleanDB} = require('./sharedE2E');
 const teardown = require('./teardown');
 
 const navigateToUserPageSelector = 'a[href*="queue.html"]';

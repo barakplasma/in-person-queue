@@ -1,5 +1,4 @@
 const {setupE2E, cleanDB} = require('./sharedE2E');
-const expect = require('expect');
 const teardown = require('./teardown');
 
 const queueLengthSelector = '#queueLengthCount';
