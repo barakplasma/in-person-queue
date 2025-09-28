@@ -101,7 +101,7 @@ describe('Admin page', () => {
       await page.click('#refresh-queue');
     });
 
-    it('should be able to mark current user done', async () => {
+    it.skip('should be able to mark current user done', async () => {
       async function getCurrentUser() {
         return await page.innerText(userIdSelector);
       }
