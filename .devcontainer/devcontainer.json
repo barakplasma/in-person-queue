@@ -2,5 +2,5 @@
     "dockerComposeFile": "../docker-compose.yml",
     "service": "devcontainer",
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-    "postStartCommand": "npm ci --no-optional"
+    "postStartCommand": "npm ci"
 }

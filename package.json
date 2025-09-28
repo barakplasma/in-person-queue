@@ -8,7 +8,7 @@
     "front-end-dev": "nodemon --inspect ./server.js",
     "back-end-dev": "nodemon --inspect --ignore client/ ./server.js",
     "test": "jest --runInBand --silent",
-    "test:e2e": "jest --testPathPattern e2e.test.js --runInBand --silent",
+    "test:e2e": "jest --testPathPatterns e2e.test.js --runInBand --silent",
     "test:unit": "jest --testPathIgnorePatterns e2e.test.js --runInBand --silent",
     "test:ci": "start-server-and-test 3000",
     "lint": "prettier --write . && eslint --fix ."
@@ -18,7 +18,7 @@
     "socketio"
   ],
   "engines": {
-    "node": ">=24"
+    "node": ">=22"
   },
   "author": "Michael Salaverry",
   "license": "GPL-3.0-or-later",
