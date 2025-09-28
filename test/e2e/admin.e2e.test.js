@@ -102,13 +102,16 @@ describe('Admin page', () => {
     });
 
     it('should be able to mark current user done', async () => {
-      const currentUser = await page.innerText(userIdSelector);
+      async function getCurrentUser() {
+        return await page.innerText(userIdSelector);
+      }
+      const currentUser = await getCurrentUser();
       expect(currentUser).toEqual('Start Queue');
 
       page.on('dialog', (dialog) => dialog.accept());
       await page.click('#current-user-done');
 
-      expect(await page.innerText(userIdSelector)).not.toEqual(currentUser);
+      expect(await getCurrentUser()).not.toEqual(currentUser);
     });
   });
 
