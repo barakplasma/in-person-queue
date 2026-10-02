@@ -1,244 +1,136 @@
-const {getClosestQueues} = require('../queue/queue');
+const {describe, it, beforeEach, after} = require('node:test');
+const assert = require('node:assert/strict');
 const queue = require('../queue/queue');
-const {cleanDB} = require('./e2e/sharedE2E');
-const teardown = require('./e2e/teardown');
 
-describe('Chisonnumber', () => {
-  describe('Queue', () => {
-    const testQueueId = 'q:8F2C4M6J+9V';
-    const testQueueMetadataKey = 'qm:q:8F2C4M6J+9V';
-    const testPassword = 'MjMzLDEzNyw5NiwxOTUsMTg4LDE3NA==';
+const testQueueId = 'q:8F2C4M6J+9V';
+const password = 'test-password';
+const redis = queue._redis;
 
-    beforeAll(() => {
-      console.log = jest.fn();
-      jest.spyOn(queue._redis, 'zadd');
-      jest.spyOn(queue._redis, 'hset');
+describe('Queue', () => {
+  beforeEach(() => redis.del(testQueueId, 'qm:' + testQueueId, 'queues'));
+  after(async () => {
+    await redis.del(testQueueId, 'qm:' + testQueueId, 'queues');
+    await redis.quit();
+  });
+
+  const create = () => queue.createQueue(testQueueId, password);
+  const addUsers = async (...ids) => {
+    for (const id of ids) await queue.addUserToQueue(testQueueId, id);
+  };
+
+  describe('createQueue', () => {
+    it('creates a queue with a start marker, password and expiry', async () => {
+      assert.equal(await create(), true);
+      assert.equal(await queue.getHeadOfQueue(testQueueId), 'Start Queue');
+      assert.equal(await redis.hget('qm:' + testQueueId, 'password'), password);
+      assert.ok((await redis.ttl(testQueueId)) > 0);
     });
 
-    afterAll(async () => {
-      await cleanDB();
-      await teardown();
+    it('refuses to overwrite an existing queue (would hijack its admin)', async () => {
+      await create();
+      assert.equal(await queue.createQueue(testQueueId, 'attacker'), false);
+      assert.equal(await queue.checkAuthForQueue({queue: testQueueId, password}), true);
     });
 
-    beforeEach(async () => {
-      await queue._redis.del(testQueueId);
-      await queue._redis.del(testQueueMetadataKey);
-      console.log.mockClear();
-      queue._redis.zadd.mockClear();
-      queue._redis.hset.mockClear();
+    it('rejects invalid plus codes and missing passwords', async () => {
+      await assert.rejects(queue.createQueue('q:<script>', password));
+      await assert.rejects(queue.createQueue(testQueueId, ''));
+    });
+  });
+
+  describe('getClosestQueues', () => {
+    it('finds a nearby queue', async () => {
+      await create();
+      assert.deepEqual(await queue.getClosestQueues('8F2C4M6J+9V'), [
+        {queue: '8F2C4M6J+9V', distance: '0.2295'},
+      ]);
     });
 
-    const testUtil = {
-      createQueue: () => queue.createQueue(testQueueId, testPassword),
-    };
-
-    describe('Create Queue', () => {
-      it('should be able to create a queue and save it\'s password', () => {
-        return testUtil.createQueue().then((res) => {
-          expect(res).toBe(undefined);
-          expect(console.log).toHaveBeenLastCalledWith({
-            EventName: 'created queue',
-            queue: testQueueId,
-          });
-          expect(queue._redis.zadd).toHaveBeenLastCalledWith(testQueueId, [
-            1,
-            'Start Queue',
-          ]);
-          expect(queue._redis.hset).toHaveBeenCalledWith(testQueueMetadataKey, {
-            password: testPassword,
-          });
-        });
-      });
+    it('drops expired queues from the geo index', async () => {
+      await create();
+      await redis.del('qm:' + testQueueId);
+      assert.deepEqual(await queue.getClosestQueues('8F2C4M6J+9V'), []);
+      assert.equal(await redis.zcard('queues'), 0);
     });
 
-    describe('Get Closest Queues', () => {
-      it('should get closest queue', () => {
-        return testUtil.createQueue().then(async () => {
-          const expectedClosestQueue = Buffer.from(
-              '8F2C4M6J+9V',
-              'utf8',
-          ).toString('base64');
-          const closestQueues = await getClosestQueues(expectedClosestQueue);
-          expect(closestQueues).toHaveLength(1);
-          expect(closestQueues).toContainEqual({
-            distance: '0.2295',
-            queue: expectedClosestQueue,
-          });
-        });
-      });
+    it('rejects invalid plus codes', async () => {
+      await assert.rejects(queue.getClosestQueues('nope'));
+    });
+  });
+
+  describe('checkAuthForQueue', () => {
+    it('rejects wrong or missing passwords', async () => {
+      await create();
+      assert.equal(await queue.checkAuthForQueue({queue: testQueueId, password: 'wrong'}), false);
+      assert.equal(await queue.checkAuthForQueue({queue: testQueueId}), false);
+      assert.equal(await queue.checkAuthForQueue({queue: 'q:none', password: undefined}), false);
     });
 
-    describe('Check Authorization for Queue Admin', () => {
-      it('should reject incorrect queue password', async () => {
-        await queue.createQueue(testQueueId, testPassword);
-        return queue
-            .checkAuthForQueue({queue: testQueueId, password: 'wrong password'})
-            .then((res) => {
-              expect(res).toBeFalsy();
-            });
-      });
-      it('should verify queue password is valid', async () => {
-        await queue.createQueue(testQueueId, testPassword);
-        return queue
-            .checkAuthForQueue({queue: testQueueId, password: testPassword})
-            .then((res) => {
-              expect(res).toBeTruthy();
-            });
-      });
+    it('accepts the right password', async () => {
+      await create();
+      assert.equal(await queue.checkAuthForQueue({queue: testQueueId, password}), true);
+    });
+  });
+
+  describe('positions', () => {
+    it('finds the 4th person', async () => {
+      await create();
+      await addUsers('b', 'c', 'd', 'e');
+      assert.equal(await queue.getPosition(testQueueId, 'd'), 3);
+      assert.equal(await queue.getQueueLength(testQueueId), 5);
     });
 
-    describe('Get Position', () => {
-      it('should find created queue', async () => {
-        await testUtil.createQueue();
-        return queue.getPosition(testQueueId, 'Start Queue').then((res) => {
-          expect(res).toBe(0);
-        });
-      });
-      it('should find 3rd person in queue', async () => {
-        await testUtil.createQueue();
-        await queue.addUserToQueue(testQueueId, 'b');
-        await queue.addUserToQueue(testQueueId, 'c');
-        await queue.addUserToQueue(testQueueId, 'd');
-        await queue.addUserToQueue(testQueueId, 'e');
-        return queue.getPosition(testQueueId, 'd').then((res) => {
-          expect(res).toBe(3);
-        });
-      });
+    it('does not add a user twice', async () => {
+      await create();
+      await addUsers('b', 'c');
+      assert.equal(
+        (await queue.addUserToQueue(testQueueId, 'c')).EventName,
+        'user already in queue',
+      );
+      assert.equal(await queue.getQueueLength(testQueueId), 3);
     });
 
-    describe('Get Head of Queue', () => {
-      it('should find head of new queue', async () => {
-        await testUtil.createQueue();
-        return queue.getHeadOfQueue(testQueueId).then((res) => {
-          expect(res).toBe('Start Queue');
-        });
-      });
-      it('should find head of old queue', async () => {
-        await testUtil.createQueue();
-        await queue.addUserToQueue(testQueueId, 'b');
-        await queue.addUserToQueue(testQueueId, 'c');
-        await queue.addUserToQueue(testQueueId, 'd');
-        await queue.addUserToQueue(testQueueId, 'e');
-        await queue.removeUserFromQueue(testQueueId, 'Start Queue');
-        await queue.removeUserFromQueue(testQueueId, 'c');
-        await queue.removeUserFromQueue(testQueueId, 'b');
-        return queue.getHeadOfQueue(testQueueId).then((res) => {
-          expect(res).toBe('d');
-        });
-      });
+    it('refuses to add users to a queue that does not exist', async () => {
+      await assert.rejects(queue.addUserToQueue(testQueueId, 'b'));
+      assert.equal(await queue.getQueueLength(testQueueId), 0);
     });
 
-    describe('Current User Done', () => {
-      it('should mark first user in queue done and next user as current head of queue', async () => {
-        await testUtil.createQueue();
-        await queue.addUserToQueue(testQueueId, 'b');
-        await queue.addUserToQueue(testQueueId, 'c');
-        await queue.addUserToQueue(testQueueId, 'd');
-        expect(await queue.getHeadOfQueue(testQueueId)).toBe('Start Queue');
-        expect(await queue.shiftQueue(testQueueId)).toStrictEqual([
-          'Start Queue',
-          '1',
-        ]);
-        return queue.getHeadOfQueue(testQueueId).then((res) => {
-          expect(res).toBe('b');
-        });
-      });
+    it('still accepts users after the queue was emptied', async () => {
+      await create();
+      await queue.shiftQueue(testQueueId);
+      await addUsers('b');
+      assert.equal(await queue.getHeadOfQueue(testQueueId), 'b');
+      assert.ok((await redis.ttl(testQueueId)) > 0);
+    });
+  });
+
+  describe('head of queue', () => {
+    it('advances when the current user is done', async () => {
+      await create();
+      await addUsers('b', 'c', 'd');
+      assert.deepEqual(await queue.shiftQueue(testQueueId), ['Start Queue', '1']);
+      assert.equal(await queue.getHeadOfQueue(testQueueId), 'b');
     });
 
-    describe('Add user to queue', () => {
-      it('should add users and get the right count', async () => {
-        await testUtil.createQueue();
-        await queue.addUserToQueue(testQueueId, 'b');
-        return queue
-            .addUserToQueue(testQueueId, 'c')
-            .then(() => {
-              return queue.getQueueLength(testQueueId);
-            })
-            .then((countUsers) => {
-            // first user is "Start Queue"
-              expect(countUsers).toBe(3);
-              expect(console.log).toHaveBeenLastCalledWith({
-                EventName: 'added to queue',
-                queue: testQueueId,
-                userId: 'c',
-                endOfQueueScore: 3,
-              });
-            });
-      });
-
-      it('should try to add existing user and have same count', async () => {
-        await testUtil.createQueue();
-        await queue.addUserToQueue(testQueueId, 'b');
-        await queue.addUserToQueue(testQueueId, 'c'); // add a second time
-        return queue
-            .addUserToQueue(testQueueId, 'c')
-            .then(() => {
-              return queue.getQueueLength(testQueueId);
-            })
-            .then((countUsers) => {
-            // first user is "Start Queue"
-              expect(countUsers).toBe(3);
-              expect(console.log).toHaveBeenLastCalledWith({
-                EventName: 'user already in queue',
-                queue: testQueueId,
-                userId: 'c',
-              });
-            });
-      });
+    it('skips removed users', async () => {
+      await create();
+      await addUsers('b', 'c', 'd', 'e');
+      for (const id of ['Start Queue', 'c', 'b']) await queue.removeUserFromQueue(testQueueId, id);
+      assert.equal(await queue.getHeadOfQueue(testQueueId), 'd');
     });
 
-    describe('Get queue length', () => {
-      it('should add users and get the right count', async () => {
-        await testUtil.createQueue();
-        return queue.getQueueLength(testQueueId).then((countUsers) => {
-          expect(countUsers).toBe(1);
-        });
-      });
+    it('removing a missing user is a no-op', async () => {
+      await create();
+      await queue.removeUserFromQueue(testQueueId, 'nobody');
+      assert.equal(await queue.getQueueLength(testQueueId), 1);
     });
+  });
 
-    describe('Remove user from queue', () => {
-      it('should remove a user and get the right count', async () => {
-        await testUtil.createQueue();
-        await queue.addUserToQueue(testQueueId, 'b');
-        return queue
-            .removeUserFromQueue(testQueueId, 'c')
-            .then(() => {
-              return queue.getQueueLength(testQueueId);
-            })
-            .then((countUsers) => {
-            // first user is "Start Queue"
-              expect(countUsers).toBe(2);
-            });
-      });
-
-      it('should try to remove non-existing user and have same count', async () => {
-        await testUtil.createQueue();
-        await queue.addUserToQueue(testQueueId, 'b');
-        await queue.addUserToQueue(testQueueId, 'c');
-        return queue
-            .removeUserFromQueue(testQueueId, 'd')
-            .then(() => {
-              return queue.getQueueLength(testQueueId);
-            })
-            .then((countUsers) => {
-            // first user is "Start Queue"
-              expect(countUsers).toBe(3);
-            });
-      });
-
-      it('should try to remove from empty queue', async () => {
-        await testUtil.createQueue();
-        await queue.removeUserFromQueue(testQueueId, 'Start Queue');
-        return queue
-            .removeUserFromQueue(testQueueId, 'd')
-            .then(() => {
-              return queue.getQueueLength(testQueueId);
-            })
-            .then((countUsers) => {
-            // first user is "Start Queue"
-              expect(countUsers).toBe(0);
-            });
-      });
+  describe('admin message', () => {
+    it('stores a truncated admin message', async () => {
+      await create();
+      await queue.updateAdminMessage(testQueueId, 'x'.repeat(2000));
+      assert.equal((await queue.getQueueMetadata(testQueueId)).adminMessage.length, 1000);
     });
   });
 });

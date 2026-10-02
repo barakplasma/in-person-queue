@@ -1,201 +1,136 @@
-const {
-  addUserToQueue,
-  removeUserFromQueue,
-  createQueue,
-  getPosition,
-  getQueueLength,
-  getHeadOfQueue,
-  shiftQueue,
-  checkAuthForQueue,
-  updateQueueMetadata,
-  getQueueMetadata,
-  getClosestQueues,
-} = require('../queue/queue');
+const queues = require('../queue/queue');
 const {Server} = require('socket.io');
 
-function decodeQueue(queue) {
-  return 'q:' + Buffer.from(queue, 'base64').toString('utf8');
+/**
+ * Validates a plus code from a client and returns its redis key.
+ * @param {unknown} plusCode
+ * @return {string}
+ */
+function queueKey(plusCode) {
+  const code = String(plusCode).toUpperCase();
+  queues.decodePlusCode(code); // throws if invalid
+  return 'q:' + code;
 }
 
 /**
- * @typedef {import('socket.io').Socket} Socket
+ * Registers a handler that can't crash the process: errors are logged and
+ * reported through the ack callback (always the last argument) when present.
+ * @param {import('socket.io').Socket} socket
+ * @param {string} event
+ * @param {(...args: any[]) => Promise<void> | void} handler
  */
-
-module.exports.connection = function(server) {
-  const io = new Server(server, {
-    cors: {
-      origin: JSON.parse(process.env.CORS_ORIGIN || '["localhost:8080"]'),
-      methods: ['GET', 'POST'],
-    },
+function on(socket, event, handler) {
+  socket.on(event, async (...args) => {
+    try {
+      await handler(...args);
+    } catch (error) {
+      console.error({EventMessage: 'handler failed', event, error: error.message});
+      const ack = args.at(-1);
+      if (typeof ack === 'function') ack({error: error.message});
+    }
   });
+}
+
+/**
+ * @param {import('http').Server} server
+ * @return {Server}
+ */
+module.exports.connection = function (server) {
+  const io = new Server(
+    server,
+    process.env.CORS_ORIGIN
+      ? {cors: {origin: JSON.parse(process.env.CORS_ORIGIN), methods: ['GET', 'POST']}}
+      : {},
+  );
+  const rooms = io.of('/room');
+
+  /** Push the latest queue state to everyone watching the queue. */
+  async function broadcast(queue) {
+    const [queueLength, {adminMessage}] = await Promise.all([
+      queues.getQueueLength(queue),
+      queues.getQueueMetadata(queue),
+    ]);
+    rooms.to(queue).emit('refresh-queue', {queueLength, adminMessage});
+  }
 
   io.on('connection', (socket) => {
-    socket.on('create-queue', async (queue, password, ack) => {
-      await createQueue(decodeQueue(queue), password);
-      ack();
+    on(socket, 'create-queue', async (plusCode, password, ack) => {
+      const created = await queues.createQueue(queueKey(plusCode), password);
+      ack(created ? {} : {error: 'A queue already exists at this location. Join it instead.'});
     });
 
-    socket.on('get-closest-queues', async (queue, ack) => {
-      const closestQueues = await getClosestQueues(queue);
-      ack(closestQueues);
+    on(socket, 'get-closest-queues', async (plusCode, ack) => {
+      ack(await queues.getClosestQueues(queueKey(plusCode).slice(2)));
     });
   });
 
-  const roomNamespace = io.of('/room');
-  /**
-   * @param {Socket} roomSocket
-   */
-  const roomConnection = (roomSocket) => {
-    let queueCache;
-    let userCache;
-    function log(msg, other) {
-      console.log(
-          Object.assign(
-              {
-                EventMessage: msg,
-                queue: queueCache,
-              },
-              other,
-          ),
-      );
-    }
+  rooms.on('connection', (socket) => {
+    on(socket, 'join-queue', (plusCode) => socket.join(queueKey(plusCode)));
 
-    roomSocket.on('join-queue', (queue) => {
-      try {
-        queueCache = decodeQueue(queue);
-        roomSocket.join(queueCache);
-        log('person joined');
-        refreshQueue();
-      } catch (error) {
-        console.info(queue);
-        console.error(error);
-      }
+    on(socket, 'get-queue-length', async (plusCode, ack) => {
+      ack({queueLength: await queues.getQueueLength(queueKey(plusCode))});
     });
 
-    async function refreshQueue() {
-      const queueLength = await getQueueLength(queueCache);
-      const adminMessage = (await getQueueMetadata(queueCache)).adminMessage;
-      const update = {queueLength, adminMessage};
-      roomSocket.to(queueCache).emit('refresh-queue', update);
-      log('refreshed-queue', update);
-    }
-
-    roomSocket.on('get-queue-length', async (queue, ack) => {
-      const queueLength = await getQueueLength(decodeQueue(queue));
-      ack({queueLength});
-    });
-
-    roomSocket.on('get-admin-message', async (queue, ack) => {
-      const adminMessage = (await getQueueMetadata(decodeQueue(queue)))
-          .adminMessage;
+    on(socket, 'get-admin-message', async (plusCode, ack) => {
+      const {adminMessage} = await queues.getQueueMetadata(queueKey(plusCode));
       ack({adminMessage});
     });
 
-    roomSocket.on('add-to-queue', refreshQueue);
-    roomSocket.on('refresh-queue', refreshQueue);
-    roomSocket.on('remove-from-queue', refreshQueue);
-
-    const updateMyPosition = async (userId, ack) => {
-      const currentPosition = await getPosition(queueCache, userId);
-      console.debug({currentPosition, userId, queueCache});
-      ack({currentPosition});
-      log('user-update-position', {currentPosition});
-    };
-
-    roomSocket.on('get-my-position', updateMyPosition);
-
-    roomSocket.on('add-user', async (queue, userId, socketId, ack) => {
-      queueCache = decodeQueue(queue);
-      userCache = userId;
-      await addUserToQueue(queueCache, userCache);
-      ack();
-      log('user-self-add');
-      log({socketId});
+    on(socket, 'get-my-position', async (plusCode, userId, ack) => {
+      ack({currentPosition: await queues.getPosition(queueKey(plusCode), String(userId))});
     });
 
-    roomSocket.on('user-done', async (queue, userId, ack) => {
-      await removeUserFromQueue(decodeQueue(queue), userId);
-      ack();
-      log('user-self-done');
-      refreshQueue();
+    on(socket, 'add-user', async (plusCode, userId, ack) => {
+      const queue = queueKey(plusCode);
+      await queues.addUserToQueue(queue, String(userId).slice(0, 32));
+      ack({});
+      await broadcast(queue);
     });
 
-    roomSocket.on('disconnect', () => {
-      log(`user disconnected`);
+    on(socket, 'user-done', async (plusCode, userId, ack) => {
+      const queue = queueKey(plusCode);
+      await queues.removeUserFromQueue(queue, String(userId));
+      ack({});
+      await broadcast(queue);
     });
-  };
+  });
 
-  roomNamespace.on('connection', roomConnection);
+  const admin = io.of('/admin');
 
-  const adminNamespace = io.of('/admin');
-
-  /**
-   *
-   * @param {Socket} adminSocket
-   */
-  const adminConnection = (adminSocket) => {
-    let queueCache;
-    function log(msg, other) {
-      console.log(
-          Object.assign(
-              {
-                EventMessage: msg,
-                queue: queueCache,
-              },
-              other,
-          ),
-      );
+  // The admin namespace is scoped to the queue the password was checked against.
+  admin.use(async (socket, next) => {
+    try {
+      const queue = queueKey(socket.handshake.auth.queue);
+      if (await queues.checkAuthForQueue({queue, password: socket.handshake.auth.password})) {
+        socket.data.queue = queue;
+        return next();
+      }
+    } catch {
+      // invalid plus code: fall through to unauthorized
     }
+    next(new Error('not authorized'));
+  });
 
-    const updateQueueForAdmin = async (ack) => {
-      const headOfQueue = await getHeadOfQueue(queueCache);
-      ack({headOfQueue});
-      log('admin refresh', {headOfQueue});
-    };
+  admin.on('connection', (socket) => {
+    const {queue} = socket.data;
 
-    adminSocket.on('update-admin-message', async (text) => {
-      const newMessage = {queue: queueCache, adminMessage: text};
-      await updateQueueMetadata(newMessage);
-      log('updated admin message', newMessage);
+    on(socket, 'refresh-queue', async (ack) => {
+      ack({headOfQueue: await queues.getHeadOfQueue(queue)});
     });
 
-    adminSocket.on('refresh-queue', updateQueueForAdmin);
-
-    adminSocket.on('admin-done', async (ack) => {
-      ack();
-      log('admin quit');
+    on(socket, 'update-admin-message', async (text, ack) => {
+      await queues.updateAdminMessage(queue, text);
+      ack?.({});
+      await broadcast(queue);
     });
 
-    adminSocket.on('join-queue', (queue, ack) => {
-      queueCache = decodeQueue(queue);
-      ack();
+    on(socket, 'current-user-done', async (ack) => {
+      const userRemoved = await queues.shiftQueue(queue);
+      console.log({EventMessage: 'current-user-done', queue, userRemoved});
+      ack({});
+      await broadcast(queue);
     });
+  });
 
-    adminSocket.on('current-user-done', async (ack) => {
-      const userRemoved = await shiftQueue(queueCache);
-      ack();
-      log('current-user-done', {queue: queueCache, userRemoved});
-    });
-  };
-  adminNamespace.on('connection', adminConnection);
-
-  /**
-   *
-   * @param {Socket} socket
-   * @param {Function} next
-   */
-  function checkAdminAuthMiddleware(socket, next) {
-    if (
-      socket.handshake.auth.queue &&
-      socket.handshake.auth.queue &&
-      checkAuthForQueue(socket.handshake.auth)
-    ) {
-      next();
-    } else {
-      const err = new Error('not authorized');
-      err['data'] = {content: 'Please retry later'}; // additional details
-    }
-  }
-
-  adminNamespace.use(checkAdminAuthMiddleware);
+  return io;
 };

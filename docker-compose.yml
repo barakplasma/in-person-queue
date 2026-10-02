@@ -1,32 +1,27 @@
-version: "3.8"
-
+# docker compose up --build   -> app on http://localhost:8080
+# docker compose up -d valkey -> just the datastore, for `npm run dev`
 services:
-  redis:
-    image: "redis"
-    container_name: queue
-    labels:
-      kompose.service.expose: "false"
-    expose:
-      - 6379
-    ports:
-      - 6379:6379
-  app:
-    build:
-      context: .
-      args:
-        - NODE_ENV_ARG=development
-    command: npm run back-end-dev
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
     volumes:
-      - ./:/usr/src/app
-    links:
-      - redis
-    depends_on:
-      - redis
-    labels:
-      kompose.service.expose: "true"
+      - valkey-data:/data
     ports:
-      - 6363:8080
+      - 127.0.0.1:6379:6379
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 5s
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      valkey:
+        condition: service_healthy
+    ports:
+      - 8080:8080
     environment:
-      - REDIS_CONNECTION_STRING=redis://queue:6379
-      - NODE_ENV=development
-      - CORS_ORIGIN=["localhost:8080"] # optional if you don't have CORS involved
+      REDIS_CONNECTION_STRING: redis://valkey:6379
+
+volumes:
+  valkey-data:

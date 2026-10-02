@@ -1,10 +1,10 @@
-FROM node:lts-alpine
-ARG NODE_ENV_ARG=production
-ENV NODE_ENV=$NODE_ENV_ARG
-WORKDIR /usr/src/app
+FROM node:24-alpine
+ENV NODE_ENV=production PORT=8080
+WORKDIR /app
 COPY package*.json ./
-RUN npm ci --no-optional
+RUN npm ci --omit=dev && npm cache clean --force
 COPY . .
-ENV PORT=8080
+USER node
 EXPOSE 8080
-CMD ["npm", "start"]
+HEALTHCHECK CMD wget -qO- http://localhost:8080/healthcheck || exit 1
+CMD ["node", "server.js"]

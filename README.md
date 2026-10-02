@@ -1,4 +1,4 @@
-![Node.js CI](https://github.com/barakplasma/in-person-queue/workflows/Node.js%20CI/badge.svg)
+![CI](https://github.com/barakplasma/in-person-queue/actions/workflows/ci.yml/badge.svg)
 ![Code Size](https://img.shields.io/github/languages/code-size/barakplasma/in-person-queue)
 ![GitHub package.json version](https://img.shields.io/github/package-json/v/barakplasma/in-person-queue)
 ![GitHub Repo stars](https://img.shields.io/github/stars/barakplasma/in-person-queue?style=social)
@@ -55,38 +55,47 @@ People can click "Join a nearby queue" to see a list of nearby queues.
 
 ## Deployment / Hosting / Ops
 
-This project is built to be self-hosted. There are no cloud dependencies. You'll need:
+This project is built to be self-hosted. There are no cloud dependencies and no third-party requests from the browser. You'll need:
 
-- Node.js server (v14 or greater)
-- Redis database (v6 or greater)
-- domain name or public IP (free dynamic dns is enough)
+- Node.js 22.9+ (or just Docker)
+- Redis 6.2+ or [Valkey](https://valkey.io) (any version)
+- a domain name with HTTPS (browsers only allow geolocation on HTTPS or localhost)
 
-A $35 Raspberry Pi and a home internet connection can handle a significant amount of traffic, don't be afraid to use one.
-
-A very easy way to get started is with flyctl (config is included in this repo). They have a generous free tier, and managed redis for you.
+### Quickest: Docker Compose
 
 ```sh
-$ brew install superfly/tap/flyctl
-$ flyctl auth signup
-$ flyctl deploy
-$ flyctl secrets set REDIS_CONNECTION_STRING=redis://YOUR CONNECTION STRING HERE
+git clone https://github.com/barakplasma/in-person-queue.git
+cd in-person-queue
+docker compose up --build
 ```
 
-See the [development](#development) section for more details on getting started locally
+Then open http://localhost:8080. Put any TLS reverse proxy in front of it (e.g. `caddy reverse-proxy --to localhost:8080`).
+
+### Prebuilt image (amd64 + arm64)
+
+Every push to `main` publishes `ghcr.io/barakplasma/in-person-queue:latest`. Run it next to any Redis/Valkey:
+
+```sh
+docker run -p 8080:8080 -e REDIS_CONNECTION_STRING=redis://my-valkey:6379 ghcr.io/barakplasma/in-person-queue
+```
+
+It is a single stateless container listening on `8080` with a `/healthcheck` endpoint (503 until Redis is ready), so it maps directly onto a Kubernetes Deployment + Service with that path as readiness probe. Websockets need sticky sessions if you run more than one replica.
+
+### Fly.io
+
+`fly.toml` is included: `fly deploy`, then `fly secrets set REDIS_CONNECTION_STRING=...`.
 
 ### Environment Variables
 
-To deploy this, you might need a [.env](https://www.npmjs.com/package/dotenv) file like this or the corresponding environment variables
+All optional. `npm start` also reads them from a `.env` file.
 
 ```env
 PORT=3000
-# NODE_ENV "development" | "production"
-NODE_ENV=development
-REDIS_CONNECTION_STRING=redis://:PASSWORD@HOSTNAME:PORT
-CORS_ORIGIN='["localhost:3000","https://barakplasma.github.io"]'
+REDIS_CONNECTION_STRING=redis://:PASSWORD@HOSTNAME:6379   # default: localhost:6379
+CORS_ORIGIN='["https://barakplasma.github.io"]'          # only needed if the client is hosted on another origin
 ```
 
-See also the docker-compose.yml or fly.toml file for details
+Queues expire 24 hours after they are created.
 
 ## Development
 
@@ -96,59 +105,52 @@ See also the docker-compose.yml or fly.toml file for details
 - This project should stay SIMPLE to use and implement. I want any beginner to be able to fork/hack this project to fit their needs. The only simpler alternative to this project should be a paper/pencil/clipboard and a loud voice. See http://boringtechnology.club/ for more details
 - The front end must be **accessible**, fast, and work on almost any MOBILE browser.
 - The backend should be easy to self-host, and scale nicely. The backend should be easy to host on a Raspberry Pi, a digital ocean droplet, or a full cluster on EC2 / K8s. This means the backend should be high performance, and simple.
-- I respect DevOps, but this project should be NoOps. An operator should ideally be able to set it up on a brand new rasberry pi once and never login to it again. [TODO: Sensible defaults and limits]
-- Lighthouse scores above 90 in every category on mobile (currently 94 performance, 91 accessibility, and 100 best practices while connected to the websocket queue)
+- I respect DevOps, but this project should be NoOps. An operator should ideally be able to set it up on a brand new rasberry pi once and never login to it again.
 
 ### Technical Design
 
-Full stack. Vanilla HTML/Javascript/CSS front-end, and Node.js (Socket.io/Express) backend with a Redis datastore.
+Vanilla HTML/JavaScript/CSS front-end (no build step, no framework), and a Node.js `http` + Socket.io backend with a Redis/Valkey datastore. Its only runtime dependencies are `socket.io` and `ioredis`.
 
-To enable real-time updates when the queue changes, this project is built on top of WebSockets via Socket.io. For consistancy and ease of development, any client-server communication which could be stuffed into `socket.emit()` was stuffed into `socket.emit()` and `socket.on()`.
+A queue is named after the [plus code](https://maps.google.com/pluscodes/) of where the admin created it. Each queue is a sorted set (`q:<plus code>`), its password and admin message live in a hash (`qm:q:<plus code>`), and a geo index (`queues`) powers "nearby queues". The server pushes a `refresh-queue` event to everyone watching a queue whenever it changes.
 
-The client website can be hosted as static files ANYWHERE, and this means this shouldn't be a SPA. To be beginner friendly and future proof, this was written without any frameworks, and using the web platform. Additionally, this was **intentionally** built without a bundler, minifier, or any kind of transpilation to reduce complexity and keep this simple to hack on. This comes at the expense of a tiny bit of performance, and that's ok. In my day-to-day, I am a React/Redux developer, and I know very well why I want this to stay simple. The CSS is an afterthought, so I went with MVP.css which was a fantastic choice for speed and accessibility.
+```mermaid
+sequenceDiagram
+  participant A as Admin page
+  participant S as Server
+  participant R as Redis / Valkey
+  participant U as User page
+  A->>S: create-queue(plusCode, password)
+  S->>R: HSETNX password, ZADD "Start Queue", GEOADD
+  U->>S: /room join-queue(plusCode)
+  U->>S: add-user(plusCode, userId)
+  S->>R: addToEndOfQueue (Lua, atomic)
+  S-->>U: refresh-queue {queueLength, adminMessage}
+  S-->>A: refresh-queue
+  A->>S: /admin current-user-done (auth: password)
+  S->>R: ZPOPMIN
+  S-->>U: refresh-queue (everyone re-reads their position)
+```
+
+The client can be hosted as static files anywhere: by default it talks to the server it was loaded from; set `localStorage.setItem('backend', 'https://your-server')` to point it elsewhere (and set `CORS_ORIGIN` on the server).
 
 ### Getting started with localhost
 
-[Implemented: docker-compose.yml] All you need to do to get started using your localhost is
-
-1. run `$ git clone https://github.com/barakplasma/in-person-queue.git`
-2. run `$ cd in-person-queue`
-3. run `$ docker-compose up` in this repository, or `$ npm install && npm start` with Redis running (and env vars set)
-4. visit `localhost:6363` (external port is configurable in the docker-compose.yml file)
-5. set your localhost environment variables there
-
-You could also grab a pre-built image from the Github actions "Deploy to Fly.io" step. Look for a line like, "registry.fly.io/chisoonnumber:deployment-1630155850" and use `docker pull registry.fly.io/chisoonnumber:deployment-1630155850` to work with it locally.
-
-Using `caddy reverse-proxy --to http://localhost:3000` can help you test locally with https. Use with `/setBackend` route;
-
-### Localhost Environment Variables
-
-To test in your browser, set the following localstorage keys on the localhost:port combo you choose to use
-Using `/setBackend` does this for you
-
-```js
-window.localStorage.setItem("env", "test");
-window.localStorage.setItem("test host", "localhost:${port}");
-```
-
-### Debug
-
-Debug is easiest when running from localhost and not in docker-compose.
-Start a local redis instance with redis locally or in docker,
-
 ```sh
-$ docker run --rm -it -p 6379:6379 --name some-redis redis:alpine
+docker compose up -d valkey   # or any local redis on :6379
+npm install
+npm run dev                   # restarts on file changes
 ```
 
-Then use VS-Code and launch program via debug panel.
+Visit http://localhost:3000. Use the "Launch server" VS Code config to debug.
 
 ### Tests
 
-There are Jest based tests here, but you need to run Redis on the same host for them to pass (like debug).
+Tests need a Redis/Valkey on `REDIS_CONNECTION_STRING` (default `localhost:6379`). They never flush the database.
 
-Use `npm test` to run all tests.
-Use `npm run test:unit` to run all tests other than playwright end-to-end tests.
-Use `npm run test:e2e` to only run playwright end-to-end tests.
+- `npm test` runs everything
+- `npm run test:unit` runs the `node:test` unit tests in `test/`
+- `npm run test:e2e` runs the Playwright browser tests in `e2e/` (starts the server for you; run `npx playwright install chromium` once)
+- `npm run lint` formats and lints
 
 #### Keywords / Buzzwords
 

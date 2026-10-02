@@ -1,37 +1,13 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch via NPM",
-      "request": "launch",
-      "runtimeArgs": ["run-script", "start"],
-      "smartStep": true,
-      "runtimeExecutable": "npm",
-      "skipFiles": ["<node_internals>/**"],
-      "type": "pwa-node"
-    },
-    {
-      "name": "Debug Jest Tests",
+      "name": "Launch server",
       "type": "node",
       "request": "launch",
-      "env": {
-        "HEADLESS": "true"
-        // "PWDEBUG": "1",
-      },
-      "runtimeArgs": [
-        "--inspect-brk",
-        "${workspaceRoot}/node_modules/.bin/jest",
-        "--runInBand",
-        // "--testRegex",
-        // "multiple.users.e2e.test.js",
-        "--testTimeout=90000"
-      ],
-      "console": "integratedTerminal",
-      "internalConsoleOptions": "neverOpen",
-      "port": 9229
+      "program": "${workspaceFolder}/server.js",
+      "runtimeArgs": ["--env-file-if-exists=.env"],
+      "skipFiles": ["<node_internals>/**"]
     }
   ]
 }

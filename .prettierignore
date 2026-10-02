@@ -1,6 +1,4 @@
-node_modules/
-*.pem
-.env
-*.rdb
+client/vendor/
+package-lock.json
 test-results/
 playwright-report/

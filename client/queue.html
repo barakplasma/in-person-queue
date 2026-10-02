@@ -1,39 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Queue</title>
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
-      integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY="
-      crossorigin="anonymous"
-    ></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
-      integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o="
-      crossorigin="anonymous"
-    />
+    <script defer src="vendor/openlocationcode.js"></script>
+    <link rel="stylesheet" href="vendor/mvp.css" />
     <script type="module" src="./queue.js"></script>
   </head>
 
   <body>
     <h4>Message from the admin:</h4>
-    <p
-      id="admin-message"
-      style="overflow: scroll; max-height: 11vh; text-overflow: ellipsis"
-    >
+    <p id="admin-message" style="overflow: scroll; max-height: 11vh; text-overflow: ellipsis">
       Loading...
     </p>
     <section id="position-section">
       <aside>
         <h3>Queue Position</h3>
         <mark id="position-in-queue">Not yet in queue</mark>
-        <p id="queueLengthContainer">
-          Queue Length: <span id="queueLengthCount">N/A</span>
-        </p>
+        <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span></p>
         <p id="userIdContainer">Your User Id: <span id="userId">N/A</span></p>
         <p id="locationContainer">Location: <a id="location">N/A</a></p>
       </aside>
@@ -51,7 +36,7 @@
       }
     </style>
     <footer>
-      <a id="done-link" class="done">Leave Queue</a>
+      <a id="done-link" class="done" href="#">Leave Queue</a>
       <h1>In-Person-Queue</h1>
     </footer>
   </body>

@@ -1,6 +1,10 @@
 node_modules/
 *.pem
 .env
+.git/
 .github/
 .vscode/
 test/
+e2e/
+test-results/
+playwright-report/
