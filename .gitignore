@@ -1,5 +1,6 @@
 node_modules/
 *.pem
 .env
-test/screenshots/
 *.rdb
+test-results/
+playwright-report/

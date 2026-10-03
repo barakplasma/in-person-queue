@@ -5,13 +5,6 @@ app = "chisoonnumber"
 kill_signal = "SIGINT"
 kill_timeout = 5
 
-[build.args]
-  NODE_ENV_ARG="production"
-
-[[statics]]
-  guest_path = "/app/client"
-  url_prefix = "/client"
-
 [env]
   CORS_ORIGIN = '["https://chisoonnumber.fly.dev","https://barakplasma.github.io"]'
   NODE_ENV = "production"

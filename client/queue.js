@@ -1,76 +1,75 @@
-// / <reference types="globals.d.ts">
-
 import {
+  connect,
+  displayLocation,
+  generateUserId,
+  getQueue,
+  goHome,
+  request,
+  setText,
   urlSearchParams,
-  config,
-  updateHTML,
   vibrate,
-  getQueueFromAddressOrCache,
 } from './sharedClientUtils.js';
-import {
-  addSelfToQueue,
-  iAmDone,
-  refreshQueue,
-  displayAdminMessage,
-  getMyPosition,
-} from './user.js';
-import {io} from 'https://cdn.skypack.dev/pin/socket.io-client@v4.1.3-lNOiO7KseuUMlZav2OCQ/mode=imports,min/optimized/socket.io-client.js';
 
-export function makeRoomSocket() {
-  return io(
-    urlSearchParams.has('location') ?
-      `${config['socket.io server host']}/room` :
-      `${config['socket.io server host']}/`,
-    {
-      transports: ['websocket', 'polling'],
-    },
-  );
-}
+const roomSocket = connect('room');
+const queue = getQueue();
+const userId = urlSearchParams.get('userId');
+if (!queue) goHome();
+let lastPosition;
 
-const roomSocket = makeRoomSocket();
-
-export function refreshQueueLength() {
-  return new Promise((resolve, reject) => {
-    roomSocket.emit('get-queue-length', getQueueFromAddressOrCache(), resolve);
-    setTimeout(() => reject(Error('timeout queue length')), 5000);
-  });
-}
-
-document
-    .querySelector('#queueLengthContainer')
-    ?.addEventListener('click', refreshQueueLength);
-
-export function refreshAdminMessage() {
-  return new Promise((resolve, reject) => {
-    roomSocket.emit('get-admin-message', getQueueFromAddressOrCache(), resolve);
-    setTimeout(() => reject(Error('timeout refreshing admin message')), 5000);
-  });
-}
-
-export function displayQueueLength(msg) {
-  const {queueLength} = msg;
-  updateHTML('#queueLengthCount', queueLength);
-}
+// (re)join the room on every (re)connect; rooms don't survive reconnects
+roomSocket.on('connect', () => roomSocket.emit('join-queue', queue));
 
 roomSocket.on('refresh-queue', ({queueLength, adminMessage}) => {
-  displayQueueLength({queueLength});
-  displayAdminMessage({adminMessage});
-  getMyPosition();
-  vibrate();
+  setText('#queueLengthCount', queueLength);
+  setText('#admin-message', adminMessage);
+  refreshPosition().catch(console.error);
 });
 
-export function joinQueue() {
-  roomSocket.emit('join-queue', getQueueFromAddressOrCache());
+async function refreshPosition() {
+  if (!userId) return;
+  const {currentPosition} = await request(roomSocket, 'get-my-position', queue, userId);
+  const display = currentPosition === null ? 'Not in queue' : currentPosition + 1;
+  setText('#position-in-queue', display);
+  if (lastPosition !== undefined && lastPosition !== display) vibrate();
+  lastPosition = display;
+  document.title = `Queue: ${display} - ${userId}`;
 }
 
-function join() {
-  addSelfToQueue();
-  refreshQueue();
+async function refresh() {
+  try {
+    const [{queueLength}, {adminMessage}] = await Promise.all([
+      request(roomSocket, 'get-queue-length', queue),
+      request(roomSocket, 'get-admin-message', queue),
+      refreshPosition(),
+    ]);
+    setText('#queueLengthCount', queueLength);
+    setText('#admin-message', adminMessage);
+  } catch (error) {
+    console.error(error);
+  }
 }
+
+async function join() {
+  const newUserId = generateUserId();
+  const {error} = await request(roomSocket, 'add-user', queue, newUserId);
+  if (error) return alert(error);
+  urlSearchParams.set('userId', newUserId);
+  location.search = urlSearchParams.toString();
+}
+
+async function done() {
+  if (userId) await request(roomSocket, 'user-done', queue, userId).catch(console.error);
+  goHome();
+}
+
+if (userId) {
+  document.querySelector('#join-queue')?.remove();
+  setText('#userId', userId);
+}
+displayLocation();
+refresh();
+
 document.querySelector('#join-queue')?.addEventListener('click', join);
-document
-    .querySelector('#refresh-queue')
-    ?.addEventListener('click', refreshQueue);
-document
-    .querySelectorAll('.done')
-    .forEach((d) => d.addEventListener('click', iAmDone));
+document.querySelector('#refresh-queue').addEventListener('click', refresh);
+document.querySelector('#queueLengthContainer').addEventListener('click', refresh);
+document.querySelectorAll('.done').forEach((d) => d.addEventListener('click', done));

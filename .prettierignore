@@ -1,0 +1,5 @@
+client/vendor/
+package-lock.json
+test-results/
+playwright-report/
+charts/*/templates/

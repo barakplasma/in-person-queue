@@ -1,21 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>In-Person-Queue</title>
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
-      integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY="
-      crossorigin="anonymous"
-    ></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
-      integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o="
-      crossorigin="anonymous"
-    />
+    <link rel="stylesheet" href="vendor/mvp.css" />
     <script type="module" src="./home.js"></script>
   </head>
 
@@ -29,15 +18,21 @@
         <aside>
           <h3>Nearby Queues</h3>
           <div id="warning"></div>
-          <div id="queues"></div>
+          <table id="queues">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th><img src="destination.png" height="30" alt="Distance" /></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
           <p>Needs location permissions to find queues near you</p>
         </aside>
       </section>
       <hr />
       <section>
-        <button id="becomeAdmin">
-          Create <mark>new</mark> queue at my location
-        </button>
+        <button id="becomeAdmin">Create <mark>new</mark> queue at my location</button>
       </section>
     </main>
     <style>

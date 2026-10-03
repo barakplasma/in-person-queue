@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    # keep in sync with the @playwright/test version in package.json
+    container: mcr.microsoft.com/playwright:v1.56.1-noble
+    services:
+      valkey:
+        image: valkey/valkey:8-alpine
+    env:
+      REDIS_CONNECTION_STRING: redis://valkey:6379
+    steps:
+      - uses: actions/checkout@v5
+      - run: npm ci
+      - run: npx prettier --check . && npx eslint .
+      - run: npm test
+
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v4
+      - name: Chart version bumped when the chart changes
+        if: github.event_name == 'pull_request'
+        run: |
+          base=origin/${{ github.base_ref }}
+          if ! git diff --quiet "$base"...HEAD -- charts/in-person-queue; then
+            old=$(git show "$base:charts/in-person-queue/Chart.yaml" 2>/dev/null | grep '^version:' || true)
+            new=$(grep '^version:' charts/in-person-queue/Chart.yaml)
+            if [ "$old" = "$new" ]; then
+              echo "::error file=charts/in-person-queue/Chart.yaml::the chart changed; bump 'version' in Chart.yaml"
+              exit 1
+            fi
+          fi
+      - run: helm lint charts/in-person-queue --strict
+      - name: Chart appVersion matches package.json
+        run: |
+          grep -Eq "^appVersion: [\"']?$(jq -r .version package.json)[\"']?$" charts/in-person-queue/Chart.yaml
+      - name: Validate rendered manifests
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          helm template t charts/in-person-queue --set ingress.enabled=true | ./kubeconform -strict -summary
+          helm template t charts/in-person-queue --set valkey.enabled=false --set externalRedis.url=redis://r:6379 | ./kubeconform -strict -summary
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - id: version
+        run: echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name == 'push'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # PRs only build (to catch Dockerfile breakage); main also pushes
+      - uses: docker/build-push-action@v6
+        with:
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+  publish-chart:
+    needs: [chart, image]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+      - run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          repo=oci://ghcr.io/${{ github.repository_owner }}/charts
+          version=$(helm show chart charts/in-person-queue | grep '^version:' | cut -d' ' -f2)
+          # published chart versions are immutable
+          if helm show chart "$repo/in-person-queue" --version "$version" >/dev/null 2>&1; then
+            echo "chart $version already published, skipping"
+            exit 0
+          fi
+          helm package charts/in-person-queue
+          helm push in-person-queue-*.tgz "$repo"

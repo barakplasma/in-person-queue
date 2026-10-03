@@ -1,23 +1,11 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Queue Admin</title>
-    <script
-      defer
-      src="https://cdn.jsdelivr.net/gh/google/open-location-code@1.0.4/js/src/openlocationcode.min.js"
-      integrity="sha256-VLEhs9CPhP4nrGyllTmF3KPGi04HVq5gFGKxGetzkYY="
-      crossorigin="anonymous"
-    ></script>
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/mvp.css@1.6.3/mvp.css"
-      integrity="sha256-WDlAJ4pTJXGoGscyx2aoJBdb4wYUljMrgaY3PRG936o="
-      crossorigin="anonymous"
-    />
+    <link rel="stylesheet" href="vendor/mvp.css" />
     <script type="module" src="./admin.js"></script>
-    <script type="module" src="./user.js"></script>
   </head>
 
   <body>
@@ -35,11 +23,14 @@
     </section>
     <section>
       <aside>
-        <p id="queueLengthContainer">
-          Queue Length: <span id="queueLengthCount">N/A</span>
-        </p>
+        <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span></p>
         <p id="locationContainer">Location: <a id="location">N/A</a></p>
-        <p id="shareLink"></p>
+        <p id="shareLink">
+          link to join queue as user: <a>link</a>
+          <button id="shareButton" type="button" hidden>
+            <img src="share.png" alt="Share" height="20" />
+          </button>
+        </p>
       </aside>
     </section>
     <section>
@@ -53,9 +44,7 @@
           spellcheck="true"
           maxlength="1000"
         ></textarea>
-        <button id="submit-admin-message" type="button">
-          update admin message
-        </button>
+        <button id="submit-admin-message" type="button">update admin message</button>
       </form>
     </section>
     <style>
@@ -63,7 +52,7 @@
         text-align: center;
       }
 
-      textarea[name="edit-admin-message"] {
+      textarea[name='edit-admin-message'] {
         text-overflow: ellipsis;
         width: 90%;
         max-width: 90%;
@@ -71,7 +60,7 @@
       }
     </style>
     <footer>
-      <a class="done">Quit queue admin</a>
+      <a class="done" href="./">Quit queue admin</a>
       <h1>In-Person-Queue</h1>
     </footer>
   </body>
