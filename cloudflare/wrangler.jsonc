@@ -11,6 +11,7 @@
       {"name": "DIRECTORY", "class_name": "Directory"},
     ],
   },
-  // SQLite-backed Durable Objects: the only kind on the Workers Free plan
+  // SQLite-backed Durable Objects: the only kind on the Workers Free plan.
+  // `migrations`, not the newer `exports`, and no `build` key: celld 0.6 rejects both.
   "migrations": [{"tag": "v1", "new_sqlite_classes": ["Queue", "Directory"]}],
 }

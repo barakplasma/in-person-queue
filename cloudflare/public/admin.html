@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Queue Admin</title>
+    <link rel="stylesheet" href="vendor/mvp.css" />
+    <script type="module" src="./admin.js"></script>
+  </head>
+
+  <body>
+    <section id="position-section">
+      <aside>
+        <h3>Current head of the queue</h3>
+        <p id="userIdContainer">UserId: <span id="userId">N/A</span></p>
+      </aside>
+    </section>
+    <section>
+      <p>
+        <button id="current-user-done">Current user done</button>
+        <button id="refresh-queue">Refresh</button>
+      </p>
+    </section>
+    <section>
+      <aside>
+        <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span></p>
+        <p>Estimated wait to join now: <span id="wait">N/A</span></p>
+        <p>Closes: <span id="closes">N/A</span></p>
+        <p><a id="displayLink" target="_blank">Open display mode</a> for a tablet, TV or laptop</p>
+        <p id="locationContainer">
+          Location: <a id="location">N/A</a> (<a id="location-osm">OpenStreetMap</a>)
+        </p>
+        <p id="shareLink">
+          link to join queue as user: <a>link</a>
+          <button id="shareButton" type="button" hidden>
+            <img src="share.png" alt="Share" height="20" />
+          </button>
+        </p>
+      </aside>
+    </section>
+    <section>
+      <table id="people">
+        <caption>
+          In line
+        </caption>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ticket</th>
+            <th>Joined</th>
+            <th>Est. wait</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <section>
+      <form action="">
+        <label for="edit-admin-message">Edit Admin Message:</label>
+        <textarea
+          name="edit-admin-message"
+          rows="8"
+          placeholder="Use this form to give your queue users some details on what this queue is for, what to do when it is their turn, and who you are."
+          id="admin-message"
+          spellcheck="true"
+          maxlength="10000"
+        ></textarea>
+        <button id="submit-admin-message" type="button">update admin message</button>
+      </form>
+    </section>
+    <style>
+      body {
+        text-align: center;
+      }
+
+      textarea[name='edit-admin-message'] {
+        text-overflow: ellipsis;
+        width: 90%;
+        max-width: 90%;
+        min-width: 90%;
+      }
+    </style>
+    <footer>
+      <a class="done" href="./">Quit queue admin</a>
+      <h1>In-Person-Queue</h1>
+    </footer>
+  </body>
+</html>

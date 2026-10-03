@@ -55,6 +55,10 @@ helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
 - On k3s, the default Traefik ingress streams the live updates with no extra config.
 - `--set rateLimit.enabled=true` adds a per-client-IP Traefik rate limit. See [`values.yaml`](charts/in-person-queue/values.yaml) for the caveats about real client IPs.
 
+### Cloudflare (free, no server)
+
+A prototype of the same app as a Cloudflare Workers project, deployable with one button to Cloudflare's free plan or self-hosted with celld: see [`cloudflare/`](cloudflare/README.md).
+
 ### Binary
 
 ```sh
