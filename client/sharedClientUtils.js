@@ -1,3 +1,5 @@
+import {subscribe} from './stream.js';
+
 export const urlSearchParams = new URLSearchParams(location.search);
 
 /** @return {string} the "lat,lon" of the current queue, or '' if the link is invalid */
@@ -38,13 +40,13 @@ export const queuePath = (queue) => `/queues/${encodeURIComponent(queue)}`;
  * @param {(state: {gone?: boolean, length: number, message: string, position?: number, head?: string, people: {id: string, joined: number}[], closes: number, serviceSeconds?: number}) => void} onState
  */
 export function watchQueue(queue, params, onState) {
-  const events = new EventSource(`api${queuePath(queue)}/events?${new URLSearchParams(params)}`);
-  events.onmessage = (event) => {
-    const state = JSON.parse(event.data);
-    if (state.gone) events.close();
-    onState(state);
-  };
-  return events;
+  const stop = subscribe(
+    `api${queuePath(queue)}/events?${new URLSearchParams(params)}`,
+    (state) => {
+      if (state.gone) stop();
+      onState(state);
+    },
+  );
 }
 
 /**

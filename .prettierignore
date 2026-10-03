@@ -3,3 +3,5 @@ package-lock.json
 test-results/
 playwright-report/
 charts/*/templates/
+cloudflare/public/
+cloudflare/.wrangler/

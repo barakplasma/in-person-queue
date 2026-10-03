@@ -1,0 +1,14 @@
+{
+  "name": "in-person-queue-cloudflare",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "assets": "rm -rf public && cp -r ../client public && cp src/stream.js src/_headers public/",
+    "dev": "npm run assets && wrangler dev",
+    "celld": "npm run assets && celld dev",
+    "deploy": "npm run assets && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.147.0"
+  }
+}
