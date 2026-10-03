@@ -1,0 +1,23 @@
+name: Release
+
+# Push an annotated tag named like the chart's appVersion (e.g. 3.2.0):
+# its subject becomes the release title and its body the release notes.
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      # checkout can turn an annotated tag into a lightweight one, losing its message
+      - run: git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag -l --format='%(contents:body)' "$GITHUB_REF_NAME" > notes.md
+          gh release create "$GITHUB_REF_NAME" --verify-tag --notes-file notes.md \
+            --title "$(git tag -l --format='%(contents:subject)' "$GITHUB_REF_NAME")"
