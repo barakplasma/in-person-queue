@@ -1,0 +1,54 @@
+image:
+  repository: ghcr.io/barakplasma/in-person-queue
+  # defaults to the chart's appVersion
+  tag: ''
+  pullPolicy: IfNotPresent
+
+# More than one replica needs sticky sessions on the ingress (socket.io long-polling).
+replicaCount: 1
+
+# JSON array of allowed origins, only needed if the client is hosted on another origin.
+corsOrigin: ''
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ''
+  annotations: {}
+  host: queue.example.com
+  # name of a TLS secret for host; leave empty for no TLS (geolocation needs HTTPS!)
+  tlsSecretName: ''
+
+# Use an existing Redis/Valkey instead of the bundled one: set valkey.enabled=false and one of these.
+externalRedis:
+  # e.g. redis://:password@my-redis:6379
+  url: ''
+  # or read REDIS_CONNECTION_STRING from an existing secret
+  existingSecret: ''
+  existingSecretKey: REDIS_CONNECTION_STRING
+
+valkey:
+  enabled: true
+  image:
+    repository: valkey/valkey
+    tag: 8-alpine
+  # generated (and kept across upgrades) when empty
+  password: ''
+  persistence:
+    enabled: true
+    size: 1Gi
+    storageClass: ''
+  resources:
+    requests: {cpu: 10m, memory: 32Mi}
+    limits: {memory: 256Mi}
+
+resources:
+  requests: {cpu: 20m, memory: 64Mi}
+  limits: {memory: 256Mi}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -79,7 +79,19 @@ Every push to `main` publishes `ghcr.io/barakplasma/in-person-queue:latest`. Run
 docker run -p 8080:8080 -e REDIS_CONNECTION_STRING=redis://my-valkey:6379 ghcr.io/barakplasma/in-person-queue
 ```
 
-It is a single stateless container listening on `8080` with a `/healthcheck` endpoint (503 until Redis is ready), so it maps directly onto a Kubernetes Deployment + Service with that path as readiness probe. Websockets need sticky sessions if you run more than one replica.
+It is a single stateless container listening on `8080` with a `/healthcheck` endpoint (503 until Redis is ready).
+
+### Kubernetes / k3s (Helm)
+
+The chart is published to GHCR as an OCI artifact. By default it also runs Valkey, with a generated password and a 1Gi PVC:
+
+```sh
+helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
+  --namespace queue --create-namespace \
+  --set ingress.enabled=true --set ingress.host=queue.example.com --set ingress.tlsSecretName=queue-tls
+```
+
+On k3s the default Traefik ingress handles websockets as-is. To use your own Redis/Valkey instead, set `valkey.enabled=false` and either `externalRedis.url` or `externalRedis.existingSecret`. See [`charts/in-person-queue/values.yaml`](charts/in-person-queue/values.yaml) for everything else. More than one app replica needs sticky sessions on the ingress.
 
 ### Fly.io
 

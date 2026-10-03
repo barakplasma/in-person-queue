@@ -1,0 +1,10 @@
+{{- if .Values.ingress.enabled }}
+In-Person-Queue: http{{ if .Values.ingress.tlsSecretName }}s{{ end }}://{{ .Values.ingress.host }}/
+{{- if not .Values.ingress.tlsSecretName }}
+Warning: browsers only allow geolocation over HTTPS; set ingress.tlsSecretName (or terminate TLS in front).
+{{- end }}
+{{- else }}
+Try it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "iq.fullname" . }} 8080:{{ .Values.service.port }}
+  open http://localhost:8080 (localhost counts as secure, so geolocation works)
+{{- end }}

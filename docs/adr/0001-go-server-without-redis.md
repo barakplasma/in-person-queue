@@ -118,7 +118,13 @@ sequenceDiagram
 - `FROM scratch` image, running as non-root with UID 65532.
 - `-healthcheck` flag so the Docker `HEALTHCHECK` works without `wget` in the image.
 - Config through env vars: `PORT`, `STATE_FILE` (default `./state.json`; empty means memory only).
-- k3s: a `Deployment` with `replicas: 1` and `strategy: Recreate`, a 10 Mi `PersistentVolumeClaim` for `state.json`, and `httpGet /healthz` probes. That's it; no Redis StatefulSet.
+- k3s: the existing Helm chart (`charts/in-person-queue`) changes like this:
+  - the bundled Valkey and its password secret are removed;
+  - the app Deployment gets `replicas: 1`, `strategy: Recreate`, and a 10 Mi PVC mounted at the `STATE_FILE` path;
+  - probes switch to `httpGet /healthz`.
+
+  The values for image, ingress and resources stay the same, so `helm upgrade` is the whole cutover.
+
 - Graceful shutdown uses `signal.NotifyContext` → `server.Shutdown`, which closes SSE streams so browsers reconnect to the new pod, then writes a final snapshot.
 
 ### 7. Migration

@@ -1,0 +1,92 @@
+{{- if .Values.valkey.enabled }}
+{{- $name := printf "%s-valkey" (include "iq.fullname" .) }}
+{{- if .Values.valkey.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}
+  labels: {{- include "iq.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.valkey.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.valkey.persistence.size }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels: {{- include "iq.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  # single RWO volume: the old pod must stop before the new one mounts it
+  strategy: {type: Recreate}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: valkey
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: valkey
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: valkey
+          image: "{{ .Values.valkey.image.repository }}:{{ .Values.valkey.image.tag }}"
+          command: [sh, -c, 'exec valkey-server --requirepass "$VALKEY_PASSWORD" --appendonly yes --dir /data']
+          env:
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: {{ include "iq.fullname" . }}, key: VALKEY_PASSWORD}
+            - {name: REDISCLI_AUTH, valueFrom: {secretKeyRef: {name: {{ include "iq.fullname" . }}, key: VALKEY_PASSWORD}}}
+          ports:
+            - {name: valkey, containerPort: 6379}
+          readinessProbe:
+            exec: {command: [valkey-cli, ping]}
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: {port: valkey}
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources: {{- toYaml .Values.valkey.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          {{- if .Values.valkey.persistence.enabled }}
+          persistentVolumeClaim: {claimName: {{ $name }}}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: {{- include "iq.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/name: valkey
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - {name: valkey, port: 6379, targetPort: valkey}
+{{- end }}
