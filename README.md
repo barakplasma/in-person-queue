@@ -131,4 +131,6 @@ Tests:
 
 CI runs all of the above, the Go tests on both amd64 and arm64, `govulncheck`, and Helm chart validation. On `main` it publishes the image and the chart to GHCR. Changing anything under `charts/` requires bumping `version` in `Chart.yaml`, because published chart versions are never overwritten.
 
+To release, bump `appVersion` in `Chart.yaml` and add `docs/releases/<appVersion>.md` (a `# ` title line, then the notes). CI creates the GitHub release and its tag when that reaches `main`.
+
 Some icons by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/).
