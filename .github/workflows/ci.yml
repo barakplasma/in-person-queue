@@ -125,3 +125,25 @@ jobs:
           fi
           helm package charts/in-person-queue
           helm push in-person-queue-*.tgz "$repo"
+
+  # Releases on main when docs/releases/<appVersion>.md exists and isn't released yet:
+  # its first line (a "# " heading) is the title, the rest the notes.
+  release:
+    needs: [build]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -nE "s/^appVersion: ['\"]?([^'\"]+)['\"]?$/\1/p" charts/in-person-queue/Chart.yaml)
+          notes=docs/releases/$version.md
+          if [ ! -f "$notes" ] || gh release view "$version" >/dev/null 2>&1; then
+            echo "no new release for $version"
+            exit 0
+          fi
+          tail -n +2 "$notes" > notes.md
+          gh release create "$version" --target "$GITHUB_SHA" --notes-file notes.md --title "$(head -1 "$notes" | sed 's/^# //')"
