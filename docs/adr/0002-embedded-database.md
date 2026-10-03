@@ -42,11 +42,46 @@ Binary sizes below are measured: a static `CGO_ENABLED=0` build with `-s -w`, li
 | Maturity / bus factor     | it's our code                                    | very high (etcd-io, CNCF)                             | engine: extreme; Go translation: mostly one maintainer, tracks every SQLite release    | one author, last release Sep 2024                   |
 | Two processes on one file | last writer wins (k8s `Recreate` prevents it)    | file lock: the second one waits                       | file lock + WAL: safe                                                                  | not safe                                            |
 
+### Redis-like embedded stores
+
+These two keep the data model of the Node/Redis version: one sorted set per queue, scored by an incrementing ticket number, so `ZRANK` is the person's position. They are judged on their documented APIs, not on their internals.
+
+|                         | **E. NutsDB**                                                                  | **F. Redka (on `modernc.org/sqlite`)**                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| What it is              | pure-Go embedded store with Redis-like KV, lists, sets and sorted sets         | Redis data types (strings, hashes, sets, sorted sets…) stored in SQLite tables, usable as a Go library   |
+| Queue operations        | `ZAdd`, `ZRank` (**1-based**), `ZPopMin`, `ZRem`, `ZCard`, all in transactions | `ZAdd`, `ZRank` (0-based, like Redis), range, delete, length, all in transactions                        |
+| Expiry                  | TTL on KV entries; sorted-set entries need our sweep                           | per-key `EXPIRE`, just like Redis: one call expires a whole queue                                        |
+| "Nearby" query          | our O(n) scan                                                                  | our O(n) scan (no GEO commands)                                                                          |
+| Data lost on a crash    | none with the default `SyncEnable: true`                                       | none (it's SQLite)                                                                                       |
+| On-disk format          | its own append-only data files plus hint files                                 | a normal SQLite file                                                                                     |
+| Ongoing maintenance     | periodic **merge** (compaction) of data files, every 2 h by default            | none beyond SQLite's own                                                                                 |
+| Look at the data        | no external tool; only through the Go API                                      | `sqlite3` CLI (Redka's own table layout)                                                                 |
+| Backups                 | through its Go API                                                             | same as SQLite: `.backup`, `VACUUM INTO`, Litestream                                                     |
+| Code we own for storage | ~60 lines, plus our sweep                                                      | ~40 lines; the Node/Redis design maps one-to-one                                                         |
+| Binary (measured)       | 6.6 MB                                                                         | 10.4 MB                                                                                                  |
+| Maturity                | v1.1.0 (Nov 2025); established project                                         | v1.0.1 (Feb 2026); young, mostly one author, **but the data is plain SQLite**, which is the escape hatch |
+
 Rejected outright: **Badger** and **Pebble**. They are LSM trees with background compaction, many files and tuning knobs, built for write-heavy datasets far larger than ours. They would be harder to operate, the opposite of what we want.
 
 ## Recommendation
 
-**C. SQLite via `modernc.org/sqlite`**, if the goal is the most boring operations possible:
+**F. Redka on `modernc.org/sqlite`**, if the goal is the most boring operations with the least code of our own:
+
+- **Storage is SQLite.** Durability, crash safety, `sqlite3` inspection and Litestream backups all work the same as option C below.
+- **The API is Redis's.** The queue logic maps one-to-one onto the original design (`ZADD` / `ZRANK` / `ZREM` / `ZPOPMIN`, plus `EXPIRE` per queue). That's less code than writing our own SQL, and no schema migrations.
+- **Low lock-in.** If Redka stopped being maintained, the data is still an ordinary SQLite file. We could read it with SQL and move to option C without losing anything.
+
+If you'd rather depend on as few layers as possible, choose **C. Plain SQLite** instead: same storage engine, but we write about 100 lines of SQL ourselves.
+
+**Why not E. NutsDB**, despite the nice API:
+
+- It's the only option besides BuntDB with its own on-disk format, and its periodic compaction is something to run and monitor.
+- There's no tooling outside the Go API, so you can't inspect or back up the data from a shell during an incident.
+- Those are exactly the "easy, rock-solid operations" criteria, so it loses to Redka even though NutsDB is pure Go and 4 MB smaller.
+
+### Plain SQLite (option C) in detail
+
+**C. SQLite via `modernc.org/sqlite`** is the most conservative choice:
 
 - Zero data loss on a crash, from the most-tested storage engine there is.
 - Anyone can open the file with the `sqlite3` CLI and run SQL. There is nothing project-specific to learn.
