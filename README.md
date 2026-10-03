@@ -93,6 +93,8 @@ helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
 
 On k3s the default Traefik ingress handles websockets as-is. To use your own Redis/Valkey instead, set `valkey.enabled=false` and either `externalRedis.url` or `externalRedis.existingSecret`. See [`charts/in-person-queue/values.yaml`](charts/in-person-queue/values.yaml) for everything else. More than one app replica needs sticky sessions on the ingress.
 
+Changing anything under `charts/` requires bumping `version` in `Chart.yaml` (CI enforces it), because published chart versions are never overwritten.
+
 ### Fly.io
 
 `fly.toml` is included: `fly deploy`, then `fly secrets set REDIS_CONNECTION_STRING=...`.

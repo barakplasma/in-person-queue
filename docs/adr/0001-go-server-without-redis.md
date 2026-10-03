@@ -1,7 +1,14 @@
 # ADR 0001: Rewrite the server in Go, with no Redis
 
-- Status: Proposed
+- Status: Accepted (2026-10-03)
 - Date: 2026-10-03
+
+## Decisions confirmed by the maintainer
+
+- The admin password may travel in the SSE URL query (HTTPS only).
+- Locations are plain `lat,lon`; no plus-code library.
+- The Go server is built on its own branch and PR, separate from the Node modernization PR.
+- Published Helm chart versions are immutable: CI requires a `version` bump whenever the chart changes.
 
 ## Context
 

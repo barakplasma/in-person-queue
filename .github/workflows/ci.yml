@@ -26,7 +26,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: azure/setup-helm@v4
+      - name: Chart version bumped when the chart changes
+        if: github.event_name == 'pull_request'
+        run: |
+          base=origin/${{ github.base_ref }}
+          if ! git diff --quiet "$base"...HEAD -- charts/in-person-queue; then
+            old=$(git show "$base:charts/in-person-queue/Chart.yaml" 2>/dev/null | grep '^version:' || true)
+            new=$(grep '^version:' charts/in-person-queue/Chart.yaml)
+            if [ "$old" = "$new" ]; then
+              echo "::error file=charts/in-person-queue/Chart.yaml::the chart changed; bump 'version' in Chart.yaml"
+              exit 1
+            fi
+          fi
       - run: helm lint charts/in-person-queue --strict
       - name: Chart appVersion matches package.json
         run: |
@@ -77,5 +91,12 @@ jobs:
       - uses: azure/setup-helm@v4
       - run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+          repo=oci://ghcr.io/${{ github.repository_owner }}/charts
+          version=$(helm show chart charts/in-person-queue | grep '^version:' | cut -d' ' -f2)
+          # published chart versions are immutable
+          if helm show chart "$repo/in-person-queue" --version "$version" >/dev/null 2>&1; then
+            echo "chart $version already published, skipping"
+            exit 0
+          fi
           helm package charts/in-person-queue
-          helm push in-person-queue-*.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
+          helm push in-person-queue-*.tgz "$repo"
