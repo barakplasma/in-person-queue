@@ -121,6 +121,8 @@ sequenceDiagram
 go run .   # http://localhost:8080; use the "Launch server" VS Code config to debug
 ```
 
+Or open the repo in its [dev container](.devcontainer/devcontainer.json) (VS Code, Codespaces, or `devcontainer up`): it comes with Go, Node and Playwright's Chromium, ready to run every check below.
+
 Tests:
 
 - **Go**: `go test -race .` runs the store and HTTP API tests against an in-memory database. There are no services to start.
