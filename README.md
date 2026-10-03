@@ -132,7 +132,7 @@ Tests:
 - **Browser**: `npm ci && npx playwright install chromium && npm run test:e2e` runs the Playwright tests in `e2e/` against `go run .`. Node is only used for this and for linting.
 - **Lint and format**: `gofmt`, `go vet`, `npm run lint` (Prettier and ESLint).
 
-CI on a pull request runs one fast `build` job: `gofmt`, `go vet`, `go test`, Prettier, ESLint and `helm lint`. On `main` it also runs the deeper checks (`go test -race` on amd64 and arm64, `govulncheck`, the Playwright tests, chart manifest validation), and only when all pass does it publish the image and the chart to GHCR.
+CI on a pull request runs one fast `build` job: `gofmt`, `go vet`, `go test`, Prettier, ESLint and `helm lint`. On `main` it also runs the deeper checks (`go test -race` on amd64 and arm64, `govulncheck`, the Playwright tests, chart manifest validation), and only when all pass does it publish the image and the chart to GHCR. Changing anything under `charts/` requires bumping `version` in `Chart.yaml`, because published chart versions are never overwritten.
 
 To release, bump `appVersion` in `Chart.yaml` and add `docs/releases/<appVersion>.md` (a `# ` title line, then the notes). CI creates the GitHub release and its tag when that reaches `main`.
 
