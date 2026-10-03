@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "in-person-queue",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  // exact file names, like the Go server: no /admin.html -> /admin redirects (the Worker serves / itself)
+  "assets": {"directory": "./public", "binding": "ASSETS", "html_handling": "none"},
+  "durable_objects": {
+    "bindings": [
+      {"name": "QUEUE", "class_name": "Queue"},
+      {"name": "DIRECTORY", "class_name": "Directory"},
+    ],
+  },
+  // SQLite-backed Durable Objects: the only kind on the Workers Free plan.
+  // `migrations`, not the newer `exports`, and no `build` key: celld 0.6 rejects both.
+  "migrations": [{"tag": "v1", "new_sqlite_classes": ["Queue", "Directory"]}],
+}

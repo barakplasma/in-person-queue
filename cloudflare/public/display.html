@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Queue display</title>
+    <link rel="stylesheet" href="vendor/mvp.css" />
+    <script type="module" src="./display.js"></script>
+    <style>
+      body {
+        text-align: center;
+        font-size: clamp(1rem, 2.2vw, 2.5rem);
+        padding: 2vh 3vw;
+      }
+      #serving {
+        font-size: clamp(3rem, 14vw, 14rem);
+        font-weight: bold;
+        line-height: 1;
+        margin: 0.2em 0;
+      }
+      #display-message {
+        white-space: pre-wrap;
+        max-height: 25vh;
+        overflow: hidden;
+      }
+      table {
+        display: table;
+        margin: 0 auto;
+        font-size: 1.3em;
+      }
+      footer {
+        font-size: 0.8em;
+      }
+    </style>
+  </head>
+
+  <body>
+    <p>Now serving</p>
+    <p id="serving">…</p>
+    <p id="display-message"></p>
+    <table id="next">
+      <caption>
+        Next
+      </caption>
+      <thead>
+        <tr>
+          <th>Ticket</th>
+          <th>Est. wait</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <footer>
+      <p>
+        In line: <strong id="queueLengthCount">0</strong> · Est. wait to join now:
+        <strong id="wait">N/A</strong> · Closes: <span id="closes">N/A</span>
+      </p>
+      <p>Join at <span id="joinUrl"></span></p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Queue</title>
+    <link rel="stylesheet" href="vendor/mvp.css" />
+    <script type="module" src="./queue.js"></script>
+  </head>
+
+  <body>
+    <h4>Message from the admin:</h4>
+    <p id="admin-message" style="overflow: auto; max-height: 11vh; text-overflow: ellipsis">
+      Loading...
+    </p>
+    <section id="position-section">
+      <aside>
+        <h3>Queue Position</h3>
+        <mark id="position-in-queue">Not yet in queue</mark>
+        <p>Estimated wait: <span id="wait">N/A</span></p>
+        <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span></p>
+        <p>Closes: <span id="closes">N/A</span></p>
+        <p id="userIdContainer">Your User Id: <span id="userId">N/A</span></p>
+        <p id="locationContainer">
+          Location: <a id="location">N/A</a> (<a id="location-osm">OpenStreetMap</a>)
+        </p>
+      </aside>
+    </section>
+    <section>
+      <p>
+        <button id="join-queue">Join Queue</button>
+        <button id="refresh-queue">Refresh</button>
+        <button id="done-btn" class="done">Done</button>
+      </p>
+    </section>
+    <section>
+      <table id="people">
+        <caption>
+          In line
+        </caption>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ticket</th>
+            <th>Joined</th>
+            <th>Est. wait</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <style>
+      body {
+        text-align: center;
+      }
+    </style>
+    <footer>
+      <a id="done-link" class="done" href="#">Leave Queue</a>
+      <h1>In-Person-Queue</h1>
+    </footer>
+  </body>
+</html>
