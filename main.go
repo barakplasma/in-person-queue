@@ -1,5 +1,5 @@
 // Command in-person-queue serves location-based real-time queues: one binary,
-// no database. State lives in memory and is snapshotted to STATE_FILE.
+// with an embedded database (Redka on SQLite) in DB_FILE.
 package main
 
 import (
@@ -33,18 +33,18 @@ func main() {
 		os.Exit(0)
 	}
 
-	// unset: ./state.json; set to "": memory only
-	stateFile, ok := os.LookupEnv("STATE_FILE")
+	// unset: ./queues.db; set to "": memory only
+	dbFile, ok := os.LookupEnv("DB_FILE")
 	if !ok {
-		stateFile = "state.json"
+		dbFile = "queues.db"
 	}
-	store := NewStore()
-	if stateFile != "" {
-		if err := store.Load(stateFile); err != nil {
-			slog.Error("loading state", "file", stateFile, "error", err)
-			os.Exit(1)
-		}
+	path := cmp.Or(dbFile, "file:/in-person-queue.db?vfs=memdb")
+	store, err := OpenStore(path)
+	if err != nil {
+		slog.Error("opening database", "path", path, "error", err)
+		os.Exit(1)
 	}
+	defer store.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -58,17 +58,13 @@ func main() {
 	}
 
 	go func() {
-		save, sweep := time.NewTicker(time.Second), time.NewTicker(time.Minute)
+		ticker := time.NewTicker(10 * time.Second)
 		for {
 			select {
-			case <-save.C:
-				if stateFile != "" {
-					if err := store.Save(stateFile); err != nil {
-						slog.Error("saving state", "error", err)
-					}
+			case <-ticker.C:
+				if err := store.Sweep(); err != nil {
+					slog.Error("sweeping expired queues", "error", err)
 				}
-			case <-sweep.C:
-				store.Sweep()
 			case <-ctx.Done():
 				return
 			}
@@ -85,16 +81,10 @@ func main() {
 		srv.Shutdown(shutdownCtx) // waits for in-flight requests
 	}()
 
-	slog.Info("listening", "port", port, "stateFile", stateFile)
+	slog.Info("listening", "port", port, "db", path)
 	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("server failed", "error", err)
 		os.Exit(1)
 	}
-	<-shutdownDone // only save once no request can change state any more
-	if stateFile != "" {
-		if err := store.Save(stateFile); err != nil {
-			slog.Error("saving state", "error", err)
-			os.Exit(1)
-		}
-	}
+	<-shutdownDone // close the database only once no request can use it any more
 }

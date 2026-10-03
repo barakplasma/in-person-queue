@@ -52,7 +52,7 @@ People can click "Join a nearby queue" to see a list of nearby queues.
 
 ## Deployment / Hosting / Ops
 
-This project is built to be self-hosted: one ~11 MB binary (or container), no database, no cloud dependencies, and no third-party requests from the browser. You'll need:
+This project is built to be self-hosted: one binary (or container) with an embedded database file, no cloud dependencies, and no third-party requests from the browser. You'll need:
 
 - the binary, or Docker / Kubernetes
 - a domain name with HTTPS (browsers only allow geolocation on HTTPS or localhost)
@@ -104,10 +104,10 @@ GOOS=linux GOARCH=arm64 go build -o in-person-queue .   # the web client is embe
 
 ### Environment Variables
 
-| Variable     | Default                                        | Meaning                                                  |
-| ------------ | ---------------------------------------------- | -------------------------------------------------------- |
-| `PORT`       | `8080`                                         | HTTP port                                                |
-| `STATE_FILE` | `state.json` (`/data/state.json` in the image) | where state is snapshotted; set to empty for memory only |
+| Variable  | Default                                      | Meaning                                                   |
+| --------- | -------------------------------------------- | --------------------------------------------------------- |
+| `PORT`    | `8080`                                       | HTTP port                                                 |
+| `DB_FILE` | `queues.db` (`/data/queues.db` in the image) | the database file; set to empty for an in-memory database |
 
 Queues expire 24 hours after they are created. Limits: 1,000 people per queue, 10,000 live queues, and 1,000 characters per admin message.
 
@@ -123,11 +123,11 @@ Queues expire 24 hours after they are created. Limits: 1,000 people per queue, 1
 
 ### Technical Design
 
-See [ADR 0001](docs/adr/0001-go-server-without-redis.md) for why it is built this way, and [ADR 0002](docs/adr/0002-embedded-database.md) (proposed) for whether to swap the JSON snapshot for an embedded database.
+See [ADR 0001](docs/adr/0001-go-server-without-redis.md) for why it is built this way, and [ADR 0002](docs/adr/0002-embedded-database.md) for the choice of embedded database.
 
 - The front-end is vanilla HTML/JavaScript/CSS, with no build step and no framework, embedded in the binary.
 - The back-end is a Go server using only the standard library.
-- All state lives in memory behind one mutex, and is snapshotted to `STATE_FILE` once a second when it has changed, plus on shutdown.
+- State lives in an embedded database: [Redka](https://github.com/nalgeon/redka) (Redis data types) on SQLite through the pure-Go `modernc.org/sqlite` driver (see [ADR 0002](docs/adr/0002-embedded-database.md)). Every change is a transaction, fsynced before the response is sent, so nothing is lost on a crash. Inspect it with `sqlite3 queues.db`, and back it up with `sqlite3 queues.db ".backup copy.db"` or Litestream.
 - Browsers send changes with `fetch`, and receive live updates through [server-sent events](https://developer.mozilla.org/docs/Web/API/EventSource), which reconnect on their own.
 
 A queue is named after where the admin created it, as `lat,lon` rounded to 4 decimals (about 11 m, e.g. `32.0800,34.7800`), so a second admin at the same spot joins the existing queue.
@@ -135,7 +135,7 @@ A queue is named after where the admin created it, as `lat,lon` rounded to 4 dec
 ```mermaid
 sequenceDiagram
   participant A as Admin page
-  participant S as Go server (memory + state.json)
+  participant S as Go server (Redka / SQLite)
   participant U as User page
   A->>S: POST /api/queues {location}
   S-->>A: 201 {location, password}

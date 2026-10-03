@@ -46,6 +46,8 @@ Build a single Go binary that serves the static client (via `embed`) and a small
 
 ### 2. Storage: in-memory state + JSON snapshot
 
+> Superseded by [ADR 0002](0002-embedded-database.md): state now lives in Redka (SQLite).
+
 ```go
 type Queue struct {
     Location     string    // "lat,lon" rounded to 4 decimals (~11m), e.g. "32.0800,34.7800"

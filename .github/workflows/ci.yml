@@ -7,7 +7,11 @@ on:
 
 jobs:
   go:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # arm64 too: the binary is deployed on ARM servers, and the SQLite driver is per-architecture code
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6

@@ -5,22 +5,22 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
-	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unicode/utf8"
+
+	"github.com/nalgeon/redka"
+	_ "modernc.org/sqlite" // pure-Go SQLite driver: no cgo, cross-compiles everywhere
 )
 
 const (
-	queueTTL     = 24 * time.Hour
 	maxUsers     = 1000
 	maxQueues    = 10000
 	maxMessage   = 1000    // characters
@@ -29,6 +29,8 @@ const (
 	// Every queue starts with this marker at its head; the admin "serves" it to start the queue.
 	startMarker = "Start Queue"
 )
+
+var queueTTL = 24 * time.Hour // a var so tests can shorten it
 
 var (
 	errInvalidLocation = errors.New("invalid location")
@@ -59,15 +61,15 @@ func round4(x float64) float64 {
 	return math.Round(x*1e4)/1e4 + 0 // + 0 turns -0 into 0
 }
 
-type Queue struct {
-	Location     string    `json:"location"`
-	Lat          float64   `json:"lat"`
-	Lon          float64   `json:"lon"`
-	PasswordHash []byte    `json:"passwordHash"` // sha256; the password itself is never stored
-	Message      string    `json:"message"`
-	Users        []string  `json:"users"` // index 0 is the head of the queue
-	ExpiresAt    time.Time `json:"expiresAt"`
-}
+// The data model is the Redis one from the Node version, stored by Redka in SQLite:
+//
+//	queue:<location>  hash:       password (sha256), message, seq (last ticket number), expires (unix ms)
+//	users:<location>  sorted set: user id -> ticket number, so rank = position in line
+//
+// Expiry is ours (the expires field + Sweep) rather than Redka's key TTL: in redka v1.0.1, writing to a
+// key whose TTL has passed keeps the old expiry, so a queue re-created at the same spot stayed invisible.
+func metaKey(location string) string  { return "queue:" + location }
+func usersKey(location string) string { return "users:" + location }
 
 // View is what one subscriber sees of a queue.
 type View struct {
@@ -83,36 +85,38 @@ type Nearby struct {
 	Distance float64 `json:"distance"` // meters
 }
 
-// Store holds all state in memory behind one mutex.
-// ponytail: single process only; put NATS or Postgres LISTEN/NOTIFY between replicas if one ever isn't enough.
+// Store keeps queues in Redka (SQLite) and wakes event streams when a queue changes.
 type Store struct {
-	mu     sync.Mutex
-	queues map[string]*Queue
-	subs   map[string]map[chan struct{}]struct{}
-	dirty  bool
-	now    func() time.Time
+	db   *redka.DB
+	mu   sync.Mutex // guards subs
+	subs map[string]map[chan struct{}]struct{}
 }
 
-func NewStore() *Store {
-	return &Store{
-		queues: map[string]*Queue{},
-		subs:   map[string]map[chan struct{}]struct{}{},
-		now:    time.Now,
+// OpenStore opens (or creates) the database at path.
+// Use "file:/name.db?vfs=memdb" for a database that only lives in memory.
+func OpenStore(path string) (*Store, error) {
+	db, err := redka.Open(path, &redka.Options{
+		DriverName: "sqlite",
+		// Redka's documented defaults, except synchronous=full: every committed change survives a power loss.
+		Pragma: map[string]string{
+			"journal_mode": "wal",
+			"synchronous":  "full",
+			"temp_store":   "memory",
+			"foreign_keys": "on",
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
+	return &Store{db: db, subs: map[string]map[chan struct{}]struct{}{}}, nil
 }
 
-// get returns a live queue; callers hold s.mu.
-func (s *Store) get(location string) (*Queue, error) {
-	q := s.queues[location]
-	if q == nil || !s.now().Before(q.ExpiresAt) {
-		return nil, errNotFound
-	}
-	return q, nil
-}
+func (s *Store) Close() error { return s.db.Close() }
 
-// changed marks the store for saving and wakes the queue's subscribers; callers hold s.mu.
+// changed wakes the queue's subscribers.
 func (s *Store) changed(location string) {
-	s.dirty = true
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	for ch := range s.subs[location] {
 		select {
 		case ch <- struct{}{}:
@@ -121,60 +125,112 @@ func (s *Store) changed(location string) {
 	}
 }
 
+// update runs f in a transaction and wakes the queue's subscribers if it succeeded.
+func (s *Store) update(location string, f func(tx *redka.Tx) error) error {
+	err := s.db.Update(f)
+	if err == nil {
+		s.changed(location)
+	}
+	return err
+}
+
+// exists returns errNotFound unless the queue is live.
+func exists(tx *redka.Tx, location string) error {
+	v, err := tx.Hash().Get(metaKey(location), "expires")
+	if errors.Is(err, redka.ErrNotFound) {
+		return errNotFound
+	} else if err != nil {
+		return err
+	}
+	// a decimal string, because unix milliseconds don't fit in a 32-bit int (linux/arm)
+	expires, err := strconv.ParseInt(v.String(), 10, 64)
+	if err == nil && time.Now().UnixMilli() >= expires {
+		return errNotFound
+	}
+	return err
+}
+
 func hash(password string) []byte {
 	h := sha256.Sum256([]byte(password))
 	return h[:]
 }
 
 // Create makes a queue and returns its admin password.
-func (s *Store) Create(location string, lat, lon float64) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if _, err := s.get(location); err == nil {
-		return "", errExists
-	}
-	if len(s.queues) >= maxQueues {
-		return "", errTooManyQueues
-	}
+func (s *Store) Create(location string) (string, error) {
 	password := rand.Text()
-	s.queues[location] = &Queue{
-		Location:     location,
-		Lat:          lat,
-		Lon:          lon,
-		PasswordHash: hash(password),
-		Users:        []string{startMarker},
-		ExpiresAt:    s.now().Add(queueTTL),
-	}
-	s.changed(location)
-	return password, nil
+	return password, s.update(location, func(tx *redka.Tx) error {
+		if err := exists(tx, location); err == nil {
+			return errExists
+		} else if !errors.Is(err, errNotFound) {
+			return err
+		}
+		// clear what an expired queue (not swept yet) left behind at this location
+		if _, err := tx.Key().Delete(metaKey(location), usersKey(location)); err != nil {
+			return err
+		}
+		if queues, err := tx.Key().Keys(metaKey("*")); err != nil {
+			return err
+		} else if len(queues) >= maxQueues {
+			return errTooManyQueues
+		}
+		if _, err := tx.Hash().SetMany(metaKey(location), map[string]any{
+			"password": hash(password),
+			"message":  "",
+			"seq":      1,
+			"expires":  strconv.FormatInt(time.Now().Add(queueTTL).UnixMilli(), 10),
+		}); err != nil {
+			return err
+		}
+		_, err := tx.ZSet().Add(usersKey(location), startMarker, 1)
+		return err
+	})
 }
 
 // Authorized reports whether password is the queue's admin password.
 func (s *Store) Authorized(location, password string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	q, err := s.get(location)
-	return err == nil && password != "" && subtle.ConstantTimeCompare(hash(password), q.PasswordHash) == 1
+	if password == "" {
+		return false
+	}
+	var stored []byte
+	s.db.View(func(tx *redka.Tx) error {
+		if err := exists(tx, location); err != nil {
+			return err
+		}
+		v, err := tx.Hash().Get(metaKey(location), "password")
+		stored = v.Bytes()
+		return err
+	})
+	return subtle.ConstantTimeCompare(hash(password), stored) == 1
 }
 
 // Join adds a new user to the end of the queue and returns their id.
 func (s *Store) Join(location string) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	q, err := s.get(location)
-	if err != nil {
-		return "", err
-	}
-	if len(q.Users) >= maxUsers {
-		return "", errFull
-	}
-	id := newUserID()
-	for slices.Contains(q.Users, id) {
-		id = newUserID()
-	}
-	q.Users = append(q.Users, id)
-	s.changed(location)
-	return id, nil
+	var id string
+	return id, s.update(location, func(tx *redka.Tx) error {
+		if err := exists(tx, location); err != nil {
+			return err
+		}
+		n, err := tx.ZSet().Len(usersKey(location))
+		if err != nil {
+			return err
+		}
+		if n >= maxUsers {
+			return errFull
+		}
+		for id = newUserID(); ; id = newUserID() {
+			if _, err := tx.ZSet().GetScore(usersKey(location), id); errors.Is(err, redka.ErrNotFound) {
+				break
+			} else if err != nil {
+				return err
+			}
+		}
+		seq, err := tx.Hash().Incr(metaKey(location), "seq", 1)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ZSet().Add(usersKey(location), id, float64(seq))
+		return err
+	})
 }
 
 // newUserID returns 6 characters that are hard to confuse when read aloud or handwritten.
@@ -189,32 +245,28 @@ func newUserID() string {
 }
 
 func (s *Store) Leave(location, user string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	q, err := s.get(location)
-	if err != nil {
+	return s.update(location, func(tx *redka.Tx) error {
+		if err := exists(tx, location); err != nil {
+			return err
+		}
+		_, err := tx.ZSet().Delete(usersKey(location), user)
 		return err
-	}
-	if i := slices.Index(q.Users, user); i >= 0 {
-		q.Users = slices.Delete(q.Users, i, i+1)
-		s.changed(location)
-	}
-	return nil
+	})
 }
 
 // Next serves the head of the queue.
 func (s *Store) Next(location string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	q, err := s.get(location)
-	if err != nil {
+	return s.update(location, func(tx *redka.Tx) error {
+		if err := exists(tx, location); err != nil {
+			return err
+		}
+		head, err := tx.ZSet().Range(usersKey(location), 0, 0)
+		if err != nil || len(head) == 0 {
+			return err
+		}
+		_, err = tx.ZSet().Delete(usersKey(location), head[0].Elem.String())
 		return err
-	}
-	if len(q.Users) > 0 {
-		q.Users = q.Users[1:]
-		s.changed(location)
-	}
-	return nil
+	})
 }
 
 func (s *Store) SetMessage(location, message string) error {
@@ -222,39 +274,53 @@ func (s *Store) SetMessage(location, message string) error {
 		_, size := utf8.DecodeLastRuneInString(message)
 		message = message[:len(message)-size]
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	q, err := s.get(location)
-	if err != nil {
+	return s.update(location, func(tx *redka.Tx) error {
+		if err := exists(tx, location); err != nil {
+			return err
+		}
+		_, err := tx.Hash().Set(metaKey(location), "message", message)
 		return err
-	}
-	q.Message = message
-	s.changed(location)
-	return nil
+	})
 }
 
 // View is the queue as seen by user (may be "") or by the admin.
 func (s *Store) View(location, user string, admin bool) View {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	q, err := s.get(location)
+	var v View
+	err := s.db.View(func(tx *redka.Tx) error {
+		if err := exists(tx, location); err != nil {
+			return err
+		}
+		message, err := tx.Hash().Get(metaKey(location), "message")
+		if err != nil {
+			return err
+		}
+		v.Message = message.String()
+		if v.Length, err = tx.ZSet().Len(usersKey(location)); err != nil {
+			return err
+		}
+		if user != "" {
+			rank, _, err := tx.ZSet().GetRank(usersKey(location), user)
+			if err == nil {
+				v.Position = new(int)
+				*v.Position = rank + 1
+			} else if !errors.Is(err, redka.ErrNotFound) {
+				return err
+			}
+		}
+		if admin {
+			head, err := tx.ZSet().Range(usersKey(location), 0, 0)
+			if err != nil {
+				return err
+			}
+			v.Head = new(string)
+			if len(head) > 0 {
+				*v.Head = head[0].Elem.String()
+			}
+		}
+		return nil
+	})
 	if err != nil {
 		return View{Gone: true}
-	}
-	v := View{Length: len(q.Users), Message: q.Message}
-	if user != "" {
-		// ponytail: O(n) per subscriber per change; fine at maxUsers=1000
-		if i := slices.Index(q.Users, user); i >= 0 {
-			v.Position = new(int)
-			*v.Position = i + 1
-		}
-	}
-	if admin {
-		head := ""
-		if len(q.Users) > 0 {
-			head = q.Users[0]
-		}
-		v.Head = &head
 	}
 	return v
 }
@@ -280,17 +346,20 @@ func (s *Store) Subscribe(location string) (<-chan struct{}, func()) {
 
 // Nearby returns the closest live queues within nearbyRadius.
 // ponytail: O(n) scan over all queues; add a geohash grid if there are ever >10k live queues.
-func (s *Store) Nearby(lat, lon float64) []Nearby {
-	s.mu.Lock()
+func (s *Store) Nearby(lat, lon float64) ([]Nearby, error) {
 	var found []Nearby
-	for _, q := range s.queues {
-		if d := distance(lat, lon, q.Lat, q.Lon); d <= nearbyRadius && s.now().Before(q.ExpiresAt) {
-			found = append(found, Nearby{q.Location, d})
+	err := s.db.View(func(tx *redka.Tx) error {
+		keys, err := tx.Key().Keys(metaKey("*"))
+		for _, k := range keys {
+			qlat, qlon, location, err := parseLocation(strings.TrimPrefix(k.Key, metaKey("")))
+			if d := distance(lat, lon, qlat, qlon); err == nil && d <= nearbyRadius && exists(tx, location) == nil {
+				found = append(found, Nearby{location, d})
+			}
 		}
-	}
-	s.mu.Unlock()
+		return err
+	})
 	slices.SortFunc(found, func(a, b Nearby) int { return cmp.Compare(a.Distance, b.Distance) })
-	return found[:min(len(found), nearbyCount)]
+	return found[:min(len(found), nearbyCount)], err
 }
 
 // distance is the haversine distance in meters.
@@ -302,76 +371,24 @@ func distance(lat1, lon1, lat2, lon2 float64) float64 {
 	return 2 * earthRadius * math.Asin(math.Sqrt(a))
 }
 
-// Sweep deletes expired queues and tells their subscribers.
-func (s *Store) Sweep() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for location, q := range s.queues {
-		if !s.now().Before(q.ExpiresAt) {
-			delete(s.queues, location)
-			s.changed(location)
+// Sweep deletes expired queues and wakes their subscribers, so their pages can say so.
+func (s *Store) Sweep() error {
+	var expired []string
+	err := s.db.Update(func(tx *redka.Tx) error {
+		keys, err := tx.Key().Keys(metaKey("*"))
+		for _, k := range keys {
+			location := strings.TrimPrefix(k.Key, metaKey(""))
+			if exists(tx, location) == errNotFound {
+				if _, err := tx.Key().Delete(metaKey(location), usersKey(location)); err != nil {
+					return err
+				}
+				expired = append(expired, location)
+			}
 		}
-	}
-}
-
-// Save writes the state to path if it changed, atomically (temp file + rename).
-func (s *Store) Save(path string) error {
-	s.mu.Lock()
-	if !s.dirty {
-		s.mu.Unlock()
-		return nil
-	}
-	data, err := json.Marshal(s.queues)
-	s.dirty = false
-	s.mu.Unlock()
-	if err != nil {
 		return err
-	}
-	tmp := path + ".tmp"
-	f, err := os.Create(tmp)
-	if err != nil {
-		return err
-	}
-	_, err = f.Write(data)
-	if err == nil {
-		err = f.Sync()
-	}
-	if closeErr := f.Close(); err == nil {
-		err = closeErr
-	}
-	if err == nil {
-		err = os.Rename(tmp, path)
-	}
-	if err == nil {
-		err = syncDir(filepath.Dir(path)) // makes the rename itself survive a power loss
-	}
-	if err != nil {
-		s.mu.Lock()
-		s.dirty = true // try again next time
-		s.mu.Unlock()
+	})
+	for _, location := range expired {
+		s.changed(location)
 	}
 	return err
-}
-
-func syncDir(dir string) error {
-	d, err := os.Open(dir)
-	if err != nil {
-		return err
-	}
-	defer d.Close()
-	return d.Sync()
-}
-
-// Load reads the state saved by Save; a missing file is an empty store.
-func (s *Store) Load(path string) error {
-	data, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return json.Unmarshal(data, &s.queues)
 }

@@ -1,6 +1,6 @@
 # ADR 0002: Hand-rolled JSON snapshot vs an embedded database
 
-- Status: Proposed (2026-10-03), waiting on the maintainer's choice
+- Status: Accepted (2026-10-03): **F. Redka on `modernc.org/sqlite`**
 - Deciding factor, from the maintainer: easy and rock-solid operation matters more than performance.
 
 ## Context
@@ -131,3 +131,16 @@ CREATE TABLE users (
 - Position is `SELECT count(*) FROM users WHERE location=? AND seq <= (…)`.
 - `state.json` → `state.db`. The chart and Docker volume stay as they are.
 - On first start, if a `state.json` exists, import it once, then rename it to `state.json.imported`.
+
+## Decision and implementation notes
+
+The maintainer chose Redka. Their priorities were maintainability and easy operation over binary size, and relying on a proven embedded store rather than our own persistence code. It is implemented as follows:
+
+- **Cross-compiles with `CGO_ENABLED=0`** (checked) to linux/amd64, linux/arm64, linux/arm (v7), linux/riscv64, darwin/arm64, darwin/amd64, windows/amd64, windows/arm64 and freebsd/amd64. CI runs the Go tests on both amd64 and arm64 runners.
+- **Data model**, the same as the Node/Redis version:
+  - a `queue:<location>` hash holds the password hash, message, ticket counter and expiry;
+  - a `users:<location>` sorted set maps user id to ticket number, so rank + 1 is the position.
+- **Durability:** Redka's documented SQLite settings, but with `synchronous=full`. Every committed change survives a power loss.
+- **Expiry is our own:** an `expires` field per queue, plus a sweep every 10 s that deletes expired queues and tells their open pages. We don't use Redka's key TTL, because redka v1.0.1 treats a write to an already-expired key as a write to the expired key: the new data stays invisible. That made a queue re-created at the same spot vanish. `TestExpiry` covers this; worth reporting upstream.
+- The expiry is stored as a decimal string, because unix milliseconds overflow a 32-bit `int` on linux/arm.
+- `STATE_FILE` / `state.json` is replaced by `DB_FILE` / `queues.db`. Nothing needs migrating, because queues live at most 24 h.
