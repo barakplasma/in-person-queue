@@ -4,9 +4,12 @@ import (
 	"errors"
 	"math"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/nalgeon/redka"
 )
 
 const testLocation = "32.0800,34.7800"
@@ -32,17 +35,17 @@ func newTestQueue(t *testing.T) (*Store, string) {
 	return s, password
 }
 
-func join(t *testing.T, s *Store, n int) []string {
+// join adds n users and returns their ids and leave keys.
+func join(t *testing.T, s *Store, n int) (ids, keys []string) {
 	t.Helper()
-	var ids []string
 	for range n {
-		id, err := s.Join(testLocation)
+		id, key, err := s.Join(testLocation)
 		if err != nil {
 			t.Fatal(err)
 		}
-		ids = append(ids, id)
+		ids, keys = append(ids, id), append(keys, key)
 	}
-	return ids
+	return ids, keys
 }
 
 func position(s *Store, user string) int {
@@ -100,11 +103,19 @@ func TestAuthorized(t *testing.T) {
 
 func TestPositions(t *testing.T) {
 	s, _ := newTestQueue(t)
-	ids := join(t, s, 3)
+	ids, keys := join(t, s, 3)
+	if !slices.Equal(ids, []string{"A001", "A002", "A003"}) {
+		t.Errorf("ids = %v; want tickets in order", ids)
+	}
 	if got := position(s, ids[1]); got != 3 {
 		t.Errorf("2nd user's position = %d; want 3 (after the start marker)", got)
 	}
-	if err := s.Leave(testLocation, ids[0]); err != nil {
+	for _, key := range []string{"", "wrong", keys[1]} {
+		if err := s.Leave(testLocation, ids[0], key); !errors.Is(err, errUnauthorized) {
+			t.Errorf("leaving as %s with key %q err = %v; want errUnauthorized", ids[0], key, err)
+		}
+	}
+	if err := s.Leave(testLocation, ids[0], keys[0]); err != nil {
 		t.Fatal(err)
 	}
 	if got := position(s, ids[1]); got != 2 {
@@ -113,14 +124,55 @@ func TestPositions(t *testing.T) {
 	if got := position(s, "nobody"); got != 0 {
 		t.Errorf("position of unknown user = %d; want none", got)
 	}
-	if err := s.Leave(testLocation, "nobody"); err != nil || s.View(testLocation, "", false).Length != 3 {
+	if err := s.Leave(testLocation, "nobody", ""); err == nil || s.View(testLocation, "", false).Length != 3 {
 		t.Errorf("leaving as an unknown user changed the queue: %v", err)
+	}
+}
+
+func TestTicketID(t *testing.T) {
+	for n, want := range map[int]string{1: "A001", 999: "A999", 1000: "B000", 1234: "B234", maxTicket: "Z999"} {
+		if got := ticketID(n); got != want {
+			t.Errorf("ticketID(%d) = %q; want %q", n, got, want)
+		}
+	}
+}
+
+func TestPeople(t *testing.T) {
+	before := time.Now().UnixMilli()
+	s, _ := newTestQueue(t)
+	ids, _ := join(t, s, 2)
+	s.Next(testLocation)
+	v := s.View(testLocation, ids[1], false)
+	if len(v.People) != 2 || v.People[0].ID != ids[0] || v.People[1].ID != ids[1] {
+		t.Fatalf("people = %+v; want %v in order", v.People, ids)
+	}
+	for _, p := range v.People {
+		if p.Joined < before || p.Joined > time.Now().UnixMilli() {
+			t.Errorf("%s joined at %d; want about now", p.ID, p.Joined)
+		}
+	}
+}
+
+func TestTicketsRunOut(t *testing.T) {
+	s, _ := newTestQueue(t)
+	s.db.Update(func(tx *redka.Tx) error {
+		_, err := tx.Hash().Set(metaKey(testLocation), "seq", maxTicket-1)
+		return err
+	})
+	if ids, _ := join(t, s, 1); ids[0] != "Z999" {
+		t.Errorf("last ticket = %q; want Z999", ids[0])
+	}
+	if _, _, err := s.Join(testLocation); !errors.Is(err, errFull) {
+		t.Errorf("join after the last ticket err = %v; want errFull", err)
+	}
+	if v := s.View(testLocation, "", false); v.Length != 2 {
+		t.Errorf("failed join changed the queue: %+v", v)
 	}
 }
 
 func TestNext(t *testing.T) {
 	s, _ := newTestQueue(t)
-	ids := join(t, s, 2)
+	ids, _ := join(t, s, 2)
 	s.Next(testLocation)
 	if head := *s.View(testLocation, "", true).Head; head != ids[0] {
 		t.Errorf("head after serving the start marker = %q; want %q", head, ids[0])
@@ -131,25 +183,25 @@ func TestNext(t *testing.T) {
 	if v := s.View(testLocation, "", true); v.Length != 0 || *v.Head != "" {
 		t.Errorf("emptied queue = %+v", v)
 	}
-	if _, err := s.Join(testLocation); err != nil {
+	if _, _, err := s.Join(testLocation); err != nil {
 		t.Errorf("joining an emptied queue: %v", err)
 	}
 }
 
 func TestJoinLimits(t *testing.T) {
 	s, _ := newTestQueue(t)
-	if _, err := s.Join("1.0000,1.0000"); !errors.Is(err, errNotFound) {
+	if _, _, err := s.Join("1.0000,1.0000"); !errors.Is(err, errNotFound) {
 		t.Errorf("join missing queue err = %v", err)
 	}
 	join(t, s, maxUsers-1)
-	if _, err := s.Join(testLocation); !errors.Is(err, errFull) {
+	if _, _, err := s.Join(testLocation); !errors.Is(err, errFull) {
 		t.Errorf("join full queue err = %v; want errFull", err)
 	}
 }
 
 func TestSetMessageTruncatesRunes(t *testing.T) {
 	s, _ := newTestQueue(t)
-	s.SetMessage(testLocation, strings.Repeat("ש", 2000))
+	s.SetMessage(testLocation, strings.Repeat("ש", maxMessage+1))
 	if got := []rune(s.View(testLocation, "", false).Message); len(got) != maxMessage {
 		t.Errorf("message length = %d runes; want %d", len(got), maxMessage)
 	}
@@ -167,7 +219,7 @@ func TestExpiry(t *testing.T) {
 	if !s.View(testLocation, "", false).Gone || s.Authorized(testLocation, password) || len(nearby) != 0 {
 		t.Error("expired queue still visible")
 	}
-	if _, err := s.Join(testLocation); !errors.Is(err, errNotFound) {
+	if _, _, err := s.Join(testLocation); !errors.Is(err, errNotFound) {
 		t.Errorf("join expired queue err = %v; want errNotFound", err)
 	}
 	if err := s.Sweep(); err != nil {
@@ -224,7 +276,7 @@ func TestPersistsAcrossRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ids := join(t, s, 2)
+	ids, _ := join(t, s, 2)
 	s.SetMessage(testLocation, "hello")
 	s.Close()
 
@@ -239,7 +291,7 @@ func TestPersistsAcrossRestart(t *testing.T) {
 	if !s.Authorized(testLocation, password) {
 		t.Error("password lost across restart")
 	}
-	if id, err := s.Join(testLocation); err != nil || position(s, id) != 4 {
+	if id, _, err := s.Join(testLocation); err != nil || id != "A003" || position(s, id) != 4 {
 		t.Errorf("join after restart: %q at %d, %v; want position 4", id, position(s, id), err)
 	}
 }

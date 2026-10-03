@@ -3,6 +3,7 @@ import {
   displayLocation,
   getQueue,
   queuePath,
+  renderPeople,
   setText,
   urlSearchParams,
   vibrate,
@@ -19,9 +20,10 @@ async function start() {
   if (error) return setText('#userId', `Not authorized for this queue (${error})`);
 
   let firstState = true;
-  watchQueue(queue, {token}, ({gone, length, message, head}) => {
+  watchQueue(queue, {token}, ({gone, length, message, head, people}) => {
     if (gone) return setText('#userId', 'This queue has closed.');
     setText('#queueLengthCount', length);
+    renderPeople(people);
     setText('#userId', head || 'Queue is empty');
     if (firstState) document.querySelector('#admin-message').value = message;
     firstState = false;

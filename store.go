@@ -2,9 +2,11 @@ package main
 
 import (
 	"cmp"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -21,9 +23,10 @@ import (
 )
 
 const (
-	maxUsers     = 1000
+	maxUsers     = 1000  // waiting at once
+	maxTicket    = 25999 // A001 … Z999, see ticketID
 	maxQueues    = 10000
-	maxMessage   = 1000    // characters
+	maxMessage   = 10000   // characters
 	nearbyRadius = 100_000 // meters
 	nearbyCount  = 5
 	// Every queue starts with this marker at its head; the admin "serves" it to start the queue.
@@ -37,6 +40,7 @@ var (
 	errExists          = errors.New("a queue already exists at this location, join it instead")
 	errNotFound        = errors.New("this queue has closed or does not exist")
 	errFull            = errors.New("this queue is full")
+	errUnauthorized    = errors.New("not authorized for this queue")
 	errTooManyQueues   = errors.New("too many queues on this server, try again later")
 )
 
@@ -63,7 +67,8 @@ func round4(x float64) float64 {
 
 // Data model (see docs/adr/0002-embedded-database.md), stored by Redka in SQLite:
 //
-//	queue:<location>  hash:       password (sha256), message, seq (last ticket number), expires (unix ms)
+//	queue:<location>  hash:       password (sha256), message, seq (last ticket number), expires (unix ms),
+//	                              joined:<user id> (unix ms) for everyone in line
 //	users:<location>  sorted set: user id -> ticket number, so rank = position in line
 //
 // Expiry is ours (the expires field + Sweep), not Redka's key TTL: in redka v1.0.1, writing to a key whose
@@ -73,11 +78,17 @@ func usersKey(location string) string { return "users:" + location }
 
 // View is what one subscriber sees of a queue.
 type View struct {
-	Gone     bool    `json:"gone,omitzero"`
-	Length   int     `json:"length"`
-	Message  string  `json:"message"`
-	Position *int    `json:"position,omitempty"` // 1-based; only sent to a user, null if not in the queue
-	Head     *string `json:"head,omitempty"`     // only sent to the admin
+	Gone     bool     `json:"gone,omitzero"`
+	Length   int      `json:"length"`
+	Message  string   `json:"message"`
+	Position *int     `json:"position,omitempty"` // 1-based; only sent to a user, null if not in the queue
+	Head     *string  `json:"head,omitempty"`     // only sent to the admin
+	People   []Person `json:"people"`             // everyone in line, in order
+}
+
+type Person struct {
+	ID     string `json:"id"`
+	Joined int64  `json:"joined"` // unix ms
 }
 
 type Nearby struct {
@@ -174,14 +185,15 @@ func (s *Store) Create(location string) (string, error) {
 			return errTooManyQueues
 		}
 		if _, err := tx.Hash().SetMany(metaKey(location), map[string]any{
-			"password": hash(password),
-			"message":  "",
-			"seq":      1,
-			"expires":  strconv.FormatInt(time.Now().Add(queueTTL).UnixMilli(), 10),
+			"password":              hash(password),
+			"message":               "",
+			"seq":                   0,
+			"expires":               strconv.FormatInt(time.Now().Add(queueTTL).UnixMilli(), 10),
+			"joined:" + startMarker: now(),
 		}); err != nil {
 			return err
 		}
-		_, err := tx.ZSet().Add(usersKey(location), startMarker, 1)
+		_, err := tx.ZSet().Add(usersKey(location), startMarker, 0)
 		return err
 	})
 }
@@ -203,10 +215,9 @@ func (s *Store) Authorized(location, password string) bool {
 	return subtle.ConstantTimeCompare(hash(password), stored) == 1
 }
 
-// Join adds a new user to the end of the queue and returns their id.
-func (s *Store) Join(location string) (string, error) {
-	var id string
-	return id, s.update(location, func(tx *redka.Tx) error {
+// Join adds a new user to the end of the queue. It returns their id, and the key they need to leave.
+func (s *Store) Join(location string) (id, key string, err error) {
+	err = s.update(location, func(tx *redka.Tx) error {
 		if err := exists(tx, location); err != nil {
 			return err
 		}
@@ -217,40 +228,65 @@ func (s *Store) Join(location string) (string, error) {
 		if n >= maxUsers {
 			return errFull
 		}
-		for id = newUserID(); ; id = newUserID() {
-			if _, err := tx.ZSet().GetScore(usersKey(location), id); errors.Is(err, redka.ErrNotFound) {
-				break
-			} else if err != nil {
-				return err
-			}
-		}
 		seq, err := tx.Hash().Incr(metaKey(location), "seq", 1)
 		if err != nil {
+			return err
+		}
+		if seq > maxTicket {
+			return errFull
+		}
+		id = ticketID(seq)
+		if key, err = leaveKey(tx, location, id); err != nil {
+			return err
+		}
+		if _, err := tx.Hash().Set(metaKey(location), "joined:"+id, now()); err != nil {
 			return err
 		}
 		_, err = tx.ZSet().Add(usersKey(location), id, float64(seq))
 		return err
 	})
+	return id, key, err
 }
 
-// newUserID returns 6 characters that are hard to confuse when read aloud or handwritten.
-func newUserID() string {
-	const alphabet = "CDEHKMPRTUWXY012458"
-	b := make([]byte, 6)
-	rand.Read(b)
-	for i := range b {
-		b[i] = alphabet[int(b[i])%len(alphabet)]
+// ticketID is a letter and 3 digits, like the paper tickets at an Israeli post office:
+// 1 is A001, 999 is A999, 1000 is B000, … 25999 is Z999.
+func ticketID(n int) string {
+	return fmt.Sprintf("%c%03d", 'A'+n/1000, n%1000)
+}
+
+// leaveKey proves who joined as id. Ids are sequential and easy to guess, so leaving needs this key.
+// It is an HMAC keyed by the queue's password hash, which never leaves the server, so there is nothing more to store.
+func leaveKey(tx *redka.Tx, location, id string) (string, error) {
+	secret, err := tx.Hash().Get(metaKey(location), "password")
+	mac := hmac.New(sha256.New, secret.Bytes())
+	mac.Write([]byte(id))
+	return hex.EncodeToString(mac.Sum(nil)[:16]), err
+}
+
+func now() string { return strconv.FormatInt(time.Now().UnixMilli(), 10) }
+
+// remove takes id out of the line.
+func remove(tx *redka.Tx, location, id string) error {
+	if _, err := tx.ZSet().Delete(usersKey(location), id); err != nil {
+		return err
 	}
-	return string(b)
+	_, err := tx.Hash().Delete(metaKey(location), "joined:"+id)
+	return err
 }
 
-func (s *Store) Leave(location, user string) error {
+func (s *Store) Leave(location, id, key string) error {
 	return s.update(location, func(tx *redka.Tx) error {
 		if err := exists(tx, location); err != nil {
 			return err
 		}
-		_, err := tx.ZSet().Delete(usersKey(location), user)
-		return err
+		want, err := leaveKey(tx, location, id)
+		if err != nil {
+			return err
+		}
+		if subtle.ConstantTimeCompare([]byte(key), []byte(want)) != 1 {
+			return errUnauthorized
+		}
+		return remove(tx, location, id)
 	})
 }
 
@@ -264,8 +300,7 @@ func (s *Store) Next(location string) error {
 		if err != nil || len(head) == 0 {
 			return err
 		}
-		_, err = tx.ZSet().Delete(usersKey(location), head[0].Elem.String())
-		return err
+		return remove(tx, location, head[0].Elem.String())
 	})
 }
 
@@ -295,26 +330,34 @@ func (s *Store) View(location, user string, admin bool) View {
 			return err
 		}
 		v.Message = message.String()
-		if v.Length, err = tx.ZSet().Len(usersKey(location)); err != nil {
+		line, err := tx.ZSet().Range(usersKey(location), 0, maxUsers-1)
+		if err != nil {
 			return err
 		}
-		if user != "" {
-			rank, _, err := tx.ZSet().GetRank(usersKey(location), user)
-			if err == nil {
-				v.Position = new(int)
-				*v.Position = rank + 1
-			} else if !errors.Is(err, redka.ErrNotFound) {
+		fields := make([]string, len(line))
+		for i, item := range line {
+			fields[i] = "joined:" + item.Elem.String()
+		}
+		joined := map[string]redka.Value{}
+		if len(fields) > 0 {
+			if joined, err = tx.Hash().GetMany(metaKey(location), fields...); err != nil {
 				return err
 			}
 		}
-		if admin {
-			head, err := tx.ZSet().Range(usersKey(location), 0, 0)
-			if err != nil {
-				return err
+		v.People = make([]Person, len(line))
+		for i, item := range line {
+			id := item.Elem.String()
+			ms, _ := strconv.ParseInt(joined[fields[i]].String(), 10, 64)
+			v.People[i] = Person{id, ms}
+			if id == user {
+				v.Position = new(i + 1)
 			}
-			v.Head = new(string)
-			if len(head) > 0 {
-				*v.Head = head[0].Elem.String()
+		}
+		v.Length = len(line)
+		if admin {
+			v.Head = new("")
+			if len(line) > 0 {
+				*v.Head = v.People[0].ID
 			}
 		}
 		return nil

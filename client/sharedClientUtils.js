@@ -35,7 +35,7 @@ export const queuePath = (queue) => `/queues/${encodeURIComponent(queue)}`;
  * Live queue state from the server; the browser reconnects on its own.
  * @param {string} queue
  * @param {Record<string, string>} params user and/or token
- * @param {(state: {gone?: boolean, length: number, message: string, position?: number, head?: string}) => void} onState
+ * @param {(state: {gone?: boolean, length: number, message: string, position?: number, head?: string, people: {id: string, joined: number}[]}) => void} onState
  */
 export function watchQueue(queue, params, onState) {
   const events = new EventSource(`api${queuePath(queue)}/events?${new URLSearchParams(params)}`);
@@ -47,15 +47,51 @@ export function watchQueue(queue, params, onState) {
   return events;
 }
 
+/**
+ * Links the location to the phone's own maps app (Apple Maps on iOS, the geo: app on Android),
+ * with OpenStreetMap as the fallback everywhere.
+ */
 export function displayLocation() {
   const location = getQueue();
-  if (location) {
-    const [lat, lon] = location.split(',');
-    const a = document.querySelector('#location');
-    a.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`;
+  if (!location) return;
+  const [lat, lon] = location.split(',');
+  const osm = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`;
+  const ua = navigator.userAgent;
+  const a = document.querySelector('#location');
+  a.textContent = location;
+  if (/iPhone|iPad|iPod|Macintosh/.test(ua)) {
+    a.href = `https://maps.apple.com/?ll=${lat},${lon}&q=${lat},${lon}`;
+  } else if (/Android/.test(ua)) {
+    a.href = `geo:${lat},${lon}?q=${lat},${lon}`; // opens the default maps app, usually Google Maps
+  } else {
+    a.href = osm;
     a.target = '_blank';
-    a.textContent = location;
   }
+  const fallback = document.querySelector('#location-osm');
+  fallback.href = osm;
+  fallback.target = '_blank';
+}
+
+/**
+ * Fills the #people table: everyone in line, in order, with when they joined.
+ * @param {{id: string, joined: number}[]} people
+ * @param {string} [me] the viewer's id, highlighted
+ */
+export function renderPeople(people, me) {
+  const tbody = document.querySelector('#people tbody');
+  tbody.replaceChildren();
+  people.forEach(({id, joined}, i) => {
+    const row = tbody.insertRow();
+    row.insertCell().textContent = i + 1;
+    const ticket = row
+      .insertCell()
+      .appendChild(document.createElement(id === me ? 'mark' : 'span'));
+    ticket.textContent = id;
+    row.insertCell().textContent = new Date(joined).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  });
 }
 
 /** Sets the text of an element, if it exists on this page. */

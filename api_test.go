@@ -67,9 +67,9 @@ func TestAPI(t *testing.T) {
 	}
 
 	_, joined := call(t, "POST", queue+"/users", "", "")
-	userID := joined["userId"].(string)
-	if len(userID) != 6 {
-		t.Errorf("userId = %q", userID)
+	userID, key := joined["userId"].(string), joined["key"].(string)
+	if userID != "A001" || key == "" {
+		t.Errorf("join = %v", joined)
 	}
 	call(t, "PUT", queue+"/message", password, `{"message":"<b>hi</b>"}`)
 
@@ -90,14 +90,17 @@ func TestAPI(t *testing.T) {
 		t.Fatal("event stream ended")
 		return nil
 	}
-	if v := next(); v["length"] != 2.0 || v["position"] != 2.0 || v["message"] != "<b>hi</b>" || v["head"] != nil {
+	if v := next(); v["length"] != 2.0 || v["position"] != 2.0 || v["message"] != "<b>hi</b>" || v["head"] != nil || len(v["people"].([]any)) != 2 {
 		t.Errorf("first event = %v", v)
 	}
 	call(t, "POST", queue+"/next", password, "")
 	if v := next(); v["length"] != 1.0 || v["position"] != 1.0 {
 		t.Errorf("event after next = %v", v)
 	}
-	call(t, "DELETE", queue+"/users/"+userID, "", "")
+	if resp, _ := call(t, "DELETE", queue+"/users/"+userID, "", ""); resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("leave without key = %d; want 401", resp.StatusCode)
+	}
+	call(t, "DELETE", queue+"/users/"+userID, key, "")
 	if v := next(); v["length"] != 0.0 || v["position"] != nil {
 		t.Errorf("event after leaving = %v", v)
 	}
