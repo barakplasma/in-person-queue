@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -341,12 +342,24 @@ func (s *Store) Save(path string) error {
 	if err == nil {
 		err = os.Rename(tmp, path)
 	}
+	if err == nil {
+		err = syncDir(filepath.Dir(path)) // makes the rename itself survive a power loss
+	}
 	if err != nil {
 		s.mu.Lock()
 		s.dirty = true // try again next time
 		s.mu.Unlock()
 	}
 	return err
+}
+
+func syncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+	return d.Sync()
 }
 
 // Load reads the state saved by Save; a missing file is an empty store.

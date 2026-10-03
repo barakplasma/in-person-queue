@@ -1,0 +1,15 @@
+{{- if .Values.rateLimit.enabled }}
+{{- if not .Values.ingress.enabled }}
+{{- fail "rateLimit.enabled needs ingress.enabled (the limit is applied by Traefik at the ingress)" }}
+{{- end }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "iq.fullname" . }}-ratelimit
+  labels: {{- include "iq.labels" . | nindent 4 }}
+spec:
+  rateLimit:
+    average: {{ .Values.rateLimit.average }}
+    burst: {{ .Values.rateLimit.burst }}
+    period: 1s
+{{- end }}

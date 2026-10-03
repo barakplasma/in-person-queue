@@ -18,6 +18,15 @@ ingress:
   # name of a TLS secret for host; leave empty for no TLS (geolocation needs HTTPS!)
   tlsSecretName: ''
 
+# Per-client-IP request limit, as a Traefik Middleware on the ingress (Traefik is k3s's default
+# ingress controller). Traefik must see real client IPs, otherwise everyone shares one bucket:
+# on k3s, set externalTrafficPolicy: Local on the traefik Service.
+# Keep it generous: people queueing at one site may share a mobile carrier's NAT IP.
+rateLimit:
+  enabled: false
+  average: 30 # requests per second per client IP
+  burst: 60
+
 # Keeps queues across pod restarts and upgrades. Without it, state lives in an emptyDir:
 # it survives container restarts but not the pod being replaced.
 persistence:

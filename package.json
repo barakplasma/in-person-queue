@@ -1,6 +1,5 @@
 {
   "name": "in-person-queue",
-  "version": "3.0.0",
   "description": "dev tooling (lint, e2e tests) for the in-person-queue Go server",
   "scripts": {
     "test:e2e": "playwright test",

@@ -1,6 +1,5 @@
 ![CI](https://github.com/barakplasma/in-person-queue/actions/workflows/ci.yml/badge.svg)
 ![Code Size](https://img.shields.io/github/languages/code-size/barakplasma/in-person-queue)
-![GitHub package.json version](https://img.shields.io/github/package-json/v/barakplasma/in-person-queue)
 ![GitHub Repo stars](https://img.shields.io/github/stars/barakplasma/in-person-queue?style=social)
 
 # in-person-queue
@@ -88,7 +87,7 @@ helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
   --set ingress.enabled=true --set ingress.host=queue.example.com --set ingress.tlsSecretName=queue-tls
 ```
 
-It runs one replica, with `Recreate` updates and a small PVC for the state file. On k3s, the default Traefik ingress streams server-sent events with no extra config. See [`charts/in-person-queue/values.yaml`](charts/in-person-queue/values.yaml) for the options.
+It runs one replica, with `Recreate` updates and a small PVC for the state file. Add `--set rateLimit.enabled=true` for a per-client-IP Traefik rate limit; see the notes in `values.yaml` about real client IPs and shared mobile-carrier IPs. On k3s, the default Traefik ingress streams server-sent events with no extra config. See [`charts/in-person-queue/values.yaml`](charts/in-person-queue/values.yaml) for the options.
 
 Changing anything under `charts/` requires bumping `version` in `Chart.yaml` (CI enforces it), because published chart versions are never overwritten.
 
@@ -124,7 +123,7 @@ Queues expire 24 hours after they are created. Limits: 1,000 people per queue, 1
 
 ### Technical Design
 
-See [ADR 0001](docs/adr/0001-go-server-without-redis.md) for why it is built this way.
+See [ADR 0001](docs/adr/0001-go-server-without-redis.md) for why it is built this way, and [ADR 0002](docs/adr/0002-embedded-database.md) (proposed) for whether to swap the JSON snapshot for an embedded database.
 
 - The front-end is vanilla HTML/JavaScript/CSS, with no build step and no framework, embedded in the binary.
 - The back-end is a Go server using only the standard library.
