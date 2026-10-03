@@ -13,7 +13,7 @@ import (
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	static, _ := fs.Sub(clientFS, "client")
-	srv := httptest.NewServer(newHandler(NewStore(), static))
+	srv := httptest.NewServer(newHandler(newTestStore(t), static))
 	t.Cleanup(srv.Close)
 	return srv
 }

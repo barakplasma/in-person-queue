@@ -11,10 +11,21 @@ import (
 
 const testLocation = "32.0800,34.7800"
 
+// newTestStore opens a fresh in-memory database.
+func newTestStore(t *testing.T) *Store {
+	t.Helper()
+	s, err := OpenStore("file:/" + t.Name() + ".db?vfs=memdb")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { s.Close() })
+	return s
+}
+
 func newTestQueue(t *testing.T) (*Store, string) {
 	t.Helper()
-	s := NewStore()
-	password, err := s.Create(testLocation, 32.08, 34.78)
+	s := newTestStore(t)
+	password, err := s.Create(testLocation)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +78,7 @@ func TestCreate(t *testing.T) {
 	if !s.Authorized(testLocation, password) {
 		t.Error("creator's password rejected")
 	}
-	if _, err := s.Create(testLocation, 32.08, 34.78); !errors.Is(err, errExists) {
+	if _, err := s.Create(testLocation); !errors.Is(err, errExists) {
 		t.Errorf("second create err = %v; want errExists (would hijack the admin)", err)
 	}
 	if !s.Authorized(testLocation, password) {
@@ -145,29 +156,56 @@ func TestSetMessageTruncatesRunes(t *testing.T) {
 }
 
 func TestExpiry(t *testing.T) {
+	defer func(ttl time.Duration) { queueTTL = ttl }(queueTTL)
+	queueTTL = 500 * time.Millisecond
 	s, password := newTestQueue(t)
+	join(t, s, 1)
 	ch, cancel := s.Subscribe(testLocation)
 	defer cancel()
-	s.now = func() time.Time { return time.Now().Add(queueTTL) }
-	if !s.View(testLocation, "", false).Gone || s.Authorized(testLocation, password) || len(s.Nearby(32.08, 34.78)) != 0 {
+	time.Sleep(600 * time.Millisecond)
+	nearby, _ := s.Nearby(32.08, 34.78)
+	if !s.View(testLocation, "", false).Gone || s.Authorized(testLocation, password) || len(nearby) != 0 {
 		t.Error("expired queue still visible")
 	}
-	s.Sweep()
+	if _, err := s.Join(testLocation); !errors.Is(err, errNotFound) {
+		t.Errorf("join expired queue err = %v; want errNotFound", err)
+	}
+	if err := s.Sweep(); err != nil {
+		t.Fatal(err)
+	}
 	select {
 	case <-ch:
 	default:
 		t.Error("subscribers not told about the expired queue")
 	}
-	if _, err := s.Create(testLocation, 32.08, 34.78); err != nil {
+	if _, err := s.Create(testLocation); err != nil {
 		t.Errorf("can't recreate an expired queue: %v", err)
+	}
+	if v := s.View(testLocation, "", true); v.Length != 1 || *v.Head != startMarker {
+		t.Errorf("recreated queue = %+v; want a fresh one", v)
+	}
+}
+
+func TestEmptiedQueueKeepsExpiring(t *testing.T) {
+	defer func(ttl time.Duration) { queueTTL = ttl }(queueTTL)
+	queueTTL = 500 * time.Millisecond
+	s, _ := newTestQueue(t)
+	s.Next(testLocation) // queue is now empty
+	join(t, s, 1)        // users set is created again
+	time.Sleep(600 * time.Millisecond)
+	if !s.View(testLocation, "", false).Gone {
+		t.Error("queue outlived its TTL after being emptied and refilled")
 	}
 }
 
 func TestNearby(t *testing.T) {
 	s, _ := newTestQueue(t)
-	s.Create("32.1000,34.7800", 32.1, 34.78) // ~2.2km
-	s.Create("33.5000,34.7800", 33.5, 34.78) // ~158km: out of range
-	got := s.Nearby(32.0809, 34.78)
+	s.Create("32.1000,34.7800") // ~2.2km
+	s.Create("33.5000,34.7800") // ~158km: out of range
+	got, err := s.Nearby(32.0809, 34.78)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(got) != 2 || got[0].Queue != testLocation || got[1].Queue != "32.1000,34.7800" {
 		t.Fatalf("Nearby = %+v", got)
 	}
@@ -176,25 +214,32 @@ func TestNearby(t *testing.T) {
 	}
 }
 
-func TestSaveLoad(t *testing.T) {
-	s, password := newTestQueue(t)
+func TestPersistsAcrossRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "queues.db")
+	s, err := OpenStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	password, err := s.Create(testLocation)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ids := join(t, s, 2)
 	s.SetMessage(testLocation, "hello")
-	path := filepath.Join(t.TempDir(), "state.json")
-	if err := s.Save(path); err != nil {
+	s.Close()
+
+	s, err = OpenStore(path)
+	if err != nil {
 		t.Fatal(err)
 	}
-	loaded := NewStore()
-	if err := loaded.Load(path); err != nil {
-		t.Fatal(err)
+	defer s.Close()
+	if v := s.View(testLocation, ids[1], false); v.Length != 3 || v.Message != "hello" || v.Position == nil || *v.Position != 3 {
+		t.Errorf("after restart: %+v", v)
 	}
-	if v := loaded.View(testLocation, ids[1], false); v.Length != 3 || v.Message != "hello" || *v.Position != 3 {
-		t.Errorf("loaded view = %+v", v)
+	if !s.Authorized(testLocation, password) {
+		t.Error("password lost across restart")
 	}
-	if !loaded.Authorized(testLocation, password) {
-		t.Error("password lost across save/load")
-	}
-	if err := NewStore().Load(filepath.Join(t.TempDir(), "missing.json")); err != nil {
-		t.Errorf("missing state file: %v", err)
+	if id, err := s.Join(testLocation); err != nil || position(s, id) != 4 {
+		t.Errorf("join after restart: %q at %d, %v; want position 4", id, position(s, id), err)
 	}
 }

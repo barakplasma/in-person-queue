@@ -1,85 +1,46 @@
 ![CI](https://github.com/barakplasma/in-person-queue/actions/workflows/ci.yml/badge.svg)
-![Code Size](https://img.shields.io/github/languages/code-size/barakplasma/in-person-queue)
-![GitHub Repo stars](https://img.shields.io/github/stars/barakplasma/in-person-queue?style=social)
 
 # in-person-queue
 
-- [Repository](https://github.com/barakplasma/in-person-queue)
-- [Development](#development)
+Location-based queues with real-time updates, from your phone. An admin creates a queue where they stand. People nearby join it from their phones and watch their position update live, so nobody has to crowd around a paper list or a shouting volunteer.
 
-## What is this?
+## Why
 
-TL:DR; This is a full stack website & server **solution for enabling arbitrary administrators to create location based queues with real-time updates**.
+It started with leftover COVID-19 vaccine doses in Israel 🇮🇱. Thawed doses only last a few hours, so at the end of the day people lined up at vaccination sites hoping for a leftover dose. Signing a single paper list and shouting names made social distancing impossible.
 
-On hold - nearly archived it
+A queue anyone can start in seconds, that works on any phone browser and respects privacy, solves that. It works just as well for any line where people would rather wait at a distance.
 
-## Inspiration
+## Using it
 
-Due to COVID-19, there is a worldwide effort to provide vaccinations to every person on earth. The vaccines currently available must be administered by medical professionals, typically in non-traditional environments (outdoors in places with enough space to socially distance). People are told to patiently queue up (line up) for their vaccine. **We can do better than forcing people to stand in line in order to get vaccinated.**
+1. **Create a queue**: open the site and tap "Create new queue at my location". The queue is named after where you stand, as `lat,lon` rounded to 4 decimals (about 11 m). A second admin at the same spot joins the existing queue instead of making a duplicate. You land on the admin page, and **its URL is the admin password**, so keep it private.
+2. **Share it**: send the link shown on the admin page, or people can find it under "Nearby Queues" on the home page.
+3. **Join**: people tap "Join Queue" and get a short id and a live position.
+4. **Serve**: the admin taps "Current user done" to serve whoever is at the head of the queue. Everyone's position updates instantly.
+5. **Message**: the admin can post a message, such as what the queue is for or what to bring, which everyone in the queue sees.
 
-Instead, there should be a mobile website for people to keep track of their position in a queue. The mobile website should have real-time updates, should work on any internet-enabled phone, and should respect the user's privacy and data. This project aspires to fulfill this need.
+Queues expire 24 hours after they are created.
 
-If you'd like to keep reading see "Use cases part II" below
+## Running it
 
-## Use cases part II
+It is one binary, or one small container, with an embedded database file. There are no other services, no cloud dependencies, and no third-party requests from the browser. Browsers only allow geolocation over **HTTPS** (or on localhost), so put it behind TLS.
 
-The Pfizer-BioNTech COVID-19 Vaccine 💉 has a shelf life of 2-8 hours after a carton of doses has been thawed [[citation]](https://www.fda.gov/media/144413/download). Typically, medical professionals thaw and prepare enough doses for everyone with an appointment. However, not everyone with an appointment is ultimately able to show up to their appointments. Thus, there are typically a number of leftover vaccine doses which go to waste every day.
-
-**It is better to make leftover and soon-to-expire vaccine doses available to a nearby waiting list of people desiring vaccination than it is to let them go to waste.**
-
-In Israel 🇮🇱 , there has been a grassroots effort to prevent wasting these leftover doses. In practice, people without appointments queue up at vaccination locations at the end of the day in hopes of getting a vaccine dose from a leftover dose. Medical professionals triage the people in the leftover doses queue according to their risk factors, and provide any leftover doses in order of medical need.
-
-The major problem I noticed while waiting in one of these queues is that it's hard to socially distance while trying to sign up on a single paper waiting list. Then, the medical professional needs to shout out names or numbers, which forces people to stay very close together. This project aspires to enable proper social distancing for people in these queues, or even to check on a queue's length before leaving their home.
-
-An intended use case of this project is to enable medical professionals, or the people in the queue themselves, to organize the queue digitally and easily.
-
-## User Guide
-
-[Implemented: Create queue] Navigate to an instance of In-Person-Queue (see [Deployment](#deployment--hosting--ops) to run your own) and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
-This prompts the browser to ask permission to do a geolocation check. The queue is named after that location as `lat,lon`, rounded to 4 decimals (about 11 meters), so a second admin at the same spot joins the existing queue instead of creating a duplicate. Only the queue admin must provide geolocation access.
-
-[Implemented: ADMIN URL]
-Anyone with the admin URL can act as an admin. The admin URL for a queue is a secret for controlling the queue.
-
-[Implemented: ADMIN MESSAGING] An admin can set and update a queue message / title to "shout" to people waiting in that queue. This is a one-to-many communication channel.
-
-[Implemented: SEE NEARBY QUEUES]
-People can click "Join a nearby queue" to see a list of nearby queues.
-
-[Implemented: open existing queue] Alternatively, they can navigate to a queue URL (for example `https://your-instance/queue.html?location=32.0800,34.7800`) to join that existing queue.
-
-[TODO: QUEUE STATS] On the queue page, a user can see the current length of the queue. A user can see an estimated waiting time, and the configured capacity of the queue. (it isn't practical to provide an infinite queue with long wait times)
-
-## Deployment / Hosting / Ops
-
-This project is built to be self-hosted: one ~11 MB binary (or container), no database, no cloud dependencies, and no third-party requests from the browser. You'll need:
-
-- the binary, or Docker / Kubernetes
-- a domain name with HTTPS (browsers only allow geolocation on HTTPS or localhost)
-
-### Quickest: Docker Compose
+### Docker Compose
 
 ```sh
 git clone https://github.com/barakplasma/in-person-queue.git
 cd in-person-queue
-docker compose up --build
+docker compose up --build   # http://localhost:8080
 ```
 
-Then open http://localhost:8080. Put any TLS reverse proxy in front of it (e.g. `caddy reverse-proxy --to localhost:8080`).
-
-### Prebuilt image (amd64 + arm64)
-
-Every push to `main` publishes `ghcr.io/barakplasma/in-person-queue:latest`:
+### Container image (amd64 + arm64)
 
 ```sh
-docker run -p 8080:8080 -v queue-state:/data ghcr.io/barakplasma/in-person-queue
+docker run -p 8080:8080 -v queue-data:/data ghcr.io/barakplasma/in-person-queue
 ```
 
-The volume keeps queues across restarts. The image is `FROM scratch`, runs as UID 65532, and has a `/healthz` endpoint.
+The image is `FROM scratch`, runs as UID 65532, keeps its database in `/data`, and has a `/healthz` endpoint.
 
 ### Kubernetes / k3s (Helm)
-
-The chart is published to GHCR as an OCI artifact:
 
 ```sh
 helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
@@ -87,71 +48,64 @@ helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
   --set ingress.enabled=true --set ingress.host=queue.example.com --set ingress.tlsSecretName=queue-tls
 ```
 
-It runs one replica, with `Recreate` updates and a small PVC for the state file. Add `--set rateLimit.enabled=true` for a per-client-IP Traefik rate limit; see the notes in `values.yaml` about real client IPs and shared mobile-carrier IPs. On k3s, the default Traefik ingress streams server-sent events with no extra config. See [`charts/in-person-queue/values.yaml`](charts/in-person-queue/values.yaml) for the options.
+- One replica with `Recreate` updates, plus a small PVC for the database.
+- On k3s, the default Traefik ingress streams the live updates with no extra config.
+- `--set rateLimit.enabled=true` adds a per-client-IP Traefik rate limit. See [`values.yaml`](charts/in-person-queue/values.yaml) for the caveats about real client IPs.
 
-Changing anything under `charts/` requires bumping `version` in `Chart.yaml` (CI enforces it), because published chart versions are never overwritten.
-
-### Bare metal / Raspberry Pi
+### Binary
 
 ```sh
-GOOS=linux GOARCH=arm64 go build -o in-person-queue .   # the web client is embedded
+go build -o in-person-queue .   # the web client is embedded; cross-compiles with GOOS/GOARCH, no cgo
 ./in-person-queue
 ```
 
-### Fly.io
+### Configuration
 
-`fly.toml` is included: `fly deploy`. Add a [volume](https://fly.io/docs/volumes/) at `/data` to keep queues across deploys.
+| Variable  | Default                                      | Meaning                                     |
+| --------- | -------------------------------------------- | ------------------------------------------- |
+| `PORT`    | `8080`                                       | HTTP port                                   |
+| `DB_FILE` | `queues.db` (`/data/queues.db` in the image) | database file; set to empty for memory only |
 
-### Environment Variables
+Limits: 1,000 people per queue, 10,000 live queues, 1,000 characters per admin message.
 
-| Variable     | Default                                        | Meaning                                                  |
-| ------------ | ---------------------------------------------- | -------------------------------------------------------- |
-| `PORT`       | `8080`                                         | HTTP port                                                |
-| `STATE_FILE` | `state.json` (`/data/state.json` in the image) | where state is snapshotted; set to empty for memory only |
+### Operations
 
-Queues expire 24 hours after they are created. Limits: 1,000 people per queue, 10,000 live queues, and 1,000 characters per admin message.
+- **Inspect** the data with `sqlite3 queues.db`; it's a normal SQLite file.
+- **Back up** with `sqlite3 queues.db ".backup copy.db"` while the server is running, or continuously with [Litestream](https://litestream.io).
+- **Health**: `GET /healthz`. The binary also has a `-healthcheck` flag for Docker's `HEALTHCHECK`.
+- **Shutdown**: `SIGTERM` closes live connections and waits for in-flight requests. Every change is committed before it is acknowledged, so a crash loses nothing.
 
-## Development
+## How it works
 
-### Goals
+The design favours boring, established building blocks over clever code ([ADR 0001](docs/adr/0001-go-server.md), [ADR 0002](docs/adr/0002-embedded-database.md)):
 
-- The most important goal of this project is to enable an ordinary person to create a vaccine leftover queue extremely quickly and easily.
-- This project should stay SIMPLE to use and implement. I want any beginner to be able to fork/hack this project to fit their needs. The only simpler alternative to this project should be a paper/pencil/clipboard and a loud voice. See http://boringtechnology.club/ for more details
-- The front end must be **accessible**, fast, and work on almost any MOBILE browser.
-- The backend should be easy to self-host. The backend should be easy to host on a Raspberry Pi, a digital ocean droplet, or a K8s cluster. This means the backend should be high performance, and simple.
-- I respect DevOps, but this project should be NoOps. An operator should ideally be able to set it up on a brand new rasberry pi once and never login to it again.
-
-### Technical Design
-
-See [ADR 0001](docs/adr/0001-go-server-without-redis.md) for why it is built this way, and [ADR 0002](docs/adr/0002-embedded-database.md) (proposed) for whether to swap the JSON snapshot for an embedded database.
-
-- The front-end is vanilla HTML/JavaScript/CSS, with no build step and no framework, embedded in the binary.
-- The back-end is a Go server using only the standard library.
-- All state lives in memory behind one mutex, and is snapshotted to `STATE_FILE` once a second when it has changed, plus on shutdown.
-- Browsers send changes with `fetch`, and receive live updates through [server-sent events](https://developer.mozilla.org/docs/Web/API/EventSource), which reconnect on their own.
-
-A queue is named after where the admin created it, as `lat,lon` rounded to 4 decimals (about 11 m, e.g. `32.0800,34.7800`), so a second admin at the same spot joins the existing queue.
+- **Server**: Go standard library: `net/http`, `embed`, `log/slog`.
+- **Storage**: [Redka](https://github.com/nalgeon/redka), which provides Redis data types on SQLite, through the pure-Go [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite) driver. Each queue is a hash (password hash, message, expiry) plus a sorted set of people scored by ticket number. A person's position is their rank + 1.
+- **Live updates**: [server-sent events](https://developer.mozilla.org/docs/Web/API/EventSource). Browsers reconnect on their own.
+- **Client**: plain HTML/JS with [mvp.css](https://andybrewer.github.io/mvp/). No build step, no framework, embedded in the binary.
 
 ```mermaid
 sequenceDiagram
   participant A as Admin page
-  participant S as Go server (memory + state.json)
+  participant S as Go server
+  participant D as Redka / SQLite
   participant U as User page
   A->>S: POST /api/queues {location}
+  S->>D: HSET queue:<loc> · ZADD users:<loc> "Start Queue"
   S-->>A: 201 {location, password}
-  A->>S: GET /api/queues/{loc}/events?token= (EventSource)
   U->>S: GET /api/queues/{loc}/events?user= (EventSource)
   U->>S: POST /api/queues/{loc}/users
+  S->>D: ZADD users:<loc> <id> <ticket>
   S-->>U: 201 {userId}
   S-->>U: data: {length: 2, position: 2}
-  S-->>A: data: {length: 2, head: "Start Queue"}
   A->>S: POST /api/queues/{loc}/next (Bearer password)
+  S->>D: ZRANGE 0 0 · ZREM
   S-->>U: data: {length: 1, position: 1}
 ```
 
 | Method & path                               | Who    | Purpose                                                |
 | ------------------------------------------- | ------ | ------------------------------------------------------ |
-| `GET /api/queues?near=<lat,lon>`            | anyone | five nearest queues within 100 km                      |
+| `GET /api/queues?near=<lat,lon>`            | anyone | the five nearest queues within 100 km                  |
 | `POST /api/queues` `{location}`             | anyone | create a queue; returns `{location, password}`, or 409 |
 | `POST /api/queues/{loc}/users`              | anyone | join; returns `{userId}`                               |
 | `DELETE /api/queues/{loc}/users/{id}`       | user   | leave                                                  |
@@ -159,28 +113,20 @@ sequenceDiagram
 | `GET /api/queues/{loc}/admin`               | admin  | 204 if the bearer token is the queue's password        |
 | `POST /api/queues/{loc}/next`               | admin  | serve the head of the queue                            |
 | `PUT /api/queues/{loc}/message` `{message}` | admin  | set the admin message                                  |
-| `GET /healthz`                              | probes | liveness/readiness                                     |
+| `GET /healthz`                              | probes | liveness and readiness                                 |
 
-### Getting started with localhost
+## Development
 
 ```sh
-go run .
+go run .   # http://localhost:8080; use the "Launch server" VS Code config to debug
 ```
 
-Visit http://localhost:8080. Use the "Launch server" VS Code config to debug.
+Tests:
 
-### Tests
+- **Go**: `go test -race .` runs the store and HTTP API tests against an in-memory database. There are no services to start.
+- **Browser**: `npm ci && npx playwright install chromium && npm run test:e2e` runs the Playwright tests in `e2e/` against `go run .`. Node is only used for this and for linting.
+- **Lint and format**: `gofmt`, `go vet`, `npm run lint` (Prettier and ESLint).
 
-- `go test -race .` runs the Go tests; there are no external services to start.
-- `npm ci && npm run test:e2e` runs the Playwright browser tests in `e2e/`. It starts the Go server for you; run `npx playwright install chromium` once.
-- `gofmt -l .`, `go vet .` and `npm run lint` (Prettier + ESLint) cover formatting and lint.
+CI runs all of the above, the Go tests on both amd64 and arm64, `govulncheck`, and Helm chart validation. On `main` it publishes the image and the chart to GHCR. Changing anything under `charts/` requires bumping `version` in `Chart.yaml`, because published chart versions are never overwritten.
 
-#### Keywords / Buzzwords
-
-- Go
-- Server-Sent Events
-- Vanilla.js
-- Docker
-- Helm / k3s
-
-<div>Some Icons made by <a href="https://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
+Some icons by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/).

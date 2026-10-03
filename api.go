@@ -32,7 +32,12 @@ func newHandler(s *Store, static fs.FS) http.Handler {
 			writeError(w, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, s.Nearby(lat, lon))
+		nearby, err := s.Nearby(lat, lon)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, nearby)
 	})
 
 	mux.HandleFunc("POST /api/queues", func(w http.ResponseWriter, r *http.Request) {
@@ -41,10 +46,10 @@ func newHandler(s *Store, static fs.FS) http.Handler {
 			writeError(w, err)
 			return
 		}
-		lat, lon, location, err := parseLocation(body.Location)
+		_, _, location, err := parseLocation(body.Location)
 		if err == nil {
 			var password string
-			if password, err = s.Create(location, lat, lon); err == nil {
+			if password, err = s.Create(location); err == nil {
 				slog.Info("created queue", "queue", location)
 				writeJSON(w, http.StatusCreated, map[string]string{"location": location, "password": password})
 				return

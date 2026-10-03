@@ -45,8 +45,8 @@ spec:
           ports:
             - {name: http, containerPort: 8080}
           env:
-            - name: STATE_FILE
-              value: /data/state.json
+            - name: DB_FILE
+              value: /data/queues.db
           readinessProbe:
             httpGet: {path: /healthz, port: http}
             periodSeconds: 5

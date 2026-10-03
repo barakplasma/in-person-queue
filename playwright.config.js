@@ -15,6 +15,6 @@ module.exports = defineConfig({
     url: `http://localhost:${PORT}/healthz`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000, // first run compiles
-    env: {PORT, STATE_FILE: ''}, // memory only
+    env: {PORT, DB_FILE: ''}, // in-memory database
   },
 });
