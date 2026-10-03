@@ -116,14 +116,11 @@ test('user-controlled text is not rendered as HTML', async ({page, context}) => 
   expect(await user.evaluate(() => globalThis.pwned)).toBeUndefined();
 });
 
-test('malformed socket input does not crash the server', async ({page, request}) => {
-  await page.goto('/');
-  const reply = await page.evaluate(async () => {
-    const {io} = await import('/socket.io/socket.io.esm.min.js');
-    return io('/').timeout(5000).emitWithAck('get-closest-queues', 'not a location');
-  });
-  expect(reply.error).toMatch(/invalid location/);
-  expect((await request.get('/healthcheck')).ok()).toBeTruthy();
+test('malformed input is rejected without hurting the server', async ({request}) => {
+  const reply = await request.get('/api/queues?near=not%20a%20location');
+  expect(reply.status()).toBe(400);
+  expect((await reply.json()).error).toMatch(/invalid location/);
+  expect((await request.get('/healthz')).ok()).toBeTruthy();
 });
 
 test('location links to OpenStreetMap, rounded to ~11m', async ({page}) => {

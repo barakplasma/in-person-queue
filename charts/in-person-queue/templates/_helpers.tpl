@@ -18,20 +18,3 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/name: {{ .Chart.Name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end -}}
-
-{{/* Secret holding REDIS_CONNECTION_STRING (and the valkey password) */}}
-{{- define "iq.secretName" -}}
-{{- .Values.externalRedis.existingSecret | default (include "iq.fullname" .) -}}
-{{- end -}}
-
-{{/* Valkey password: explicit value, else the one already in the cluster, else a new random one */}}
-{{- define "iq.valkeyPassword" -}}
-{{- $existing := lookup "v1" "Secret" .Release.Namespace (include "iq.fullname" .) -}}
-{{- if .Values.valkey.password -}}
-{{- .Values.valkey.password -}}
-{{- else if and $existing (index $existing.data "VALKEY_PASSWORD") -}}
-{{- index $existing.data "VALKEY_PASSWORD" | b64dec -}}
-{{- else -}}
-{{- randAlphaNum 32 -}}
-{{- end -}}
-{{- end -}}

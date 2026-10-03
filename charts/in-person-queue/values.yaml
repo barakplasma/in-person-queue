@@ -4,11 +4,7 @@ image:
   tag: ''
   pullPolicy: IfNotPresent
 
-# More than one replica needs sticky sessions on the ingress (socket.io long-polling).
-replicaCount: 1
-
-# JSON array of allowed origins, only needed if the client is hosted on another origin.
-corsOrigin: ''
+# State lives in the pod (memory + a snapshot file), so there is always exactly one replica.
 
 service:
   type: ClusterIP
@@ -22,32 +18,16 @@ ingress:
   # name of a TLS secret for host; leave empty for no TLS (geolocation needs HTTPS!)
   tlsSecretName: ''
 
-# Use an existing Redis/Valkey instead of the bundled one: set valkey.enabled=false and one of these.
-externalRedis:
-  # e.g. redis://:password@my-redis:6379
-  url: ''
-  # or read REDIS_CONNECTION_STRING from an existing secret
-  existingSecret: ''
-  existingSecretKey: REDIS_CONNECTION_STRING
-
-valkey:
+# Keeps queues across pod restarts and upgrades. Without it, state lives in an emptyDir:
+# it survives container restarts but not the pod being replaced.
+persistence:
   enabled: true
-  image:
-    repository: valkey/valkey
-    tag: 8-alpine
-  # generated (and kept across upgrades) when empty
-  password: ''
-  persistence:
-    enabled: true
-    size: 1Gi
-    storageClass: ''
-  resources:
-    requests: {cpu: 10m, memory: 32Mi}
-    limits: {memory: 256Mi}
+  size: 64Mi
+  storageClass: ''
 
 resources:
-  requests: {cpu: 20m, memory: 64Mi}
-  limits: {memory: 256Mi}
+  requests: {cpu: 10m, memory: 16Mi}
+  limits: {memory: 128Mi}
 
 nodeSelector: {}
 tolerations: []

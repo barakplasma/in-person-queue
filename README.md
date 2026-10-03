@@ -2,11 +2,9 @@
 ![Code Size](https://img.shields.io/github/languages/code-size/barakplasma/in-person-queue)
 ![GitHub package.json version](https://img.shields.io/github/package-json/v/barakplasma/in-person-queue)
 ![GitHub Repo stars](https://img.shields.io/github/stars/barakplasma/in-person-queue?style=social)
-![Website](https://img.shields.io/website?down_color=lightgrey&down_message=offline&up_color=blue&up_message=online&url=https%3A%2F%2Fbarakplasma.github.io%2Fin-person-queue%2Fclient%2F)
 
 # in-person-queue
 
-- [Client without active Socket.io Server](https://barakplasma.github.io/in-person-queue/client/)
 - [Repository](https://github.com/barakplasma/in-person-queue)
 - [Development](#development)
 
@@ -38,7 +36,7 @@ An intended use case of this project is to enable medical professionals, or the 
 
 ## User Guide
 
-[Implemented: Create queue] Navigate to an instance of In-Person-Queue, such as https://barakplasma.github.io/in-person-queue/client/ and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
+[Implemented: Create queue] Navigate to an instance of In-Person-Queue (see [Deployment](#deployment--hosting--ops) to run your own) and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
 This prompts the browser to ask permission to do a geolocation check. The queue is named after that location as `lat,lon`, rounded to 4 decimals (about 11 meters), so a second admin at the same spot joins the existing queue instead of creating a duplicate. Only the queue admin must provide geolocation access.
 
 [Implemented: ADMIN URL]
@@ -49,16 +47,15 @@ Anyone with the admin URL can act as an admin. The admin URL for a queue is a se
 [Implemented: SEE NEARBY QUEUES]
 People can click "Join a nearby queue" to see a list of nearby queues.
 
-[Implemented: open existing queue] Alternatively, they can navigate to a queue URL (for example https://barakplasma.github.io/in-person-queue/client/queue.html?location=8G4P3QJJ+56) to join that existing queue.
+[Implemented: open existing queue] Alternatively, they can navigate to a queue URL (for example `https://your-instance/queue.html?location=32.0800,34.7800`) to join that existing queue.
 
 [TODO: QUEUE STATS] On the queue page, a user can see the current length of the queue. A user can see an estimated waiting time, and the configured capacity of the queue. (it isn't practical to provide an infinite queue with long wait times)
 
 ## Deployment / Hosting / Ops
 
-This project is built to be self-hosted. There are no cloud dependencies and no third-party requests from the browser. You'll need:
+This project is built to be self-hosted: one ~11 MB binary (or container), no database, no cloud dependencies, and no third-party requests from the browser. You'll need:
 
-- Node.js 22.9+ (or just Docker)
-- Redis 6.2+ or [Valkey](https://valkey.io) (any version)
+- the binary, or Docker / Kubernetes
 - a domain name with HTTPS (browsers only allow geolocation on HTTPS or localhost)
 
 ### Quickest: Docker Compose
@@ -73,17 +70,17 @@ Then open http://localhost:8080. Put any TLS reverse proxy in front of it (e.g. 
 
 ### Prebuilt image (amd64 + arm64)
 
-Every push to `main` publishes `ghcr.io/barakplasma/in-person-queue:latest`. Run it next to any Redis/Valkey:
+Every push to `main` publishes `ghcr.io/barakplasma/in-person-queue:latest`:
 
 ```sh
-docker run -p 8080:8080 -e REDIS_CONNECTION_STRING=redis://my-valkey:6379 ghcr.io/barakplasma/in-person-queue
+docker run -p 8080:8080 -v queue-state:/data ghcr.io/barakplasma/in-person-queue
 ```
 
-It is a single stateless container listening on `8080` with a `/healthcheck` endpoint (503 until Redis is ready).
+The volume keeps queues across restarts. The image is `FROM scratch`, runs as UID 65532, and has a `/healthz` endpoint.
 
 ### Kubernetes / k3s (Helm)
 
-The chart is published to GHCR as an OCI artifact. By default it also runs Valkey, with a generated password and a 1Gi PVC:
+The chart is published to GHCR as an OCI artifact:
 
 ```sh
 helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
@@ -91,25 +88,29 @@ helm install queue oci://ghcr.io/barakplasma/charts/in-person-queue \
   --set ingress.enabled=true --set ingress.host=queue.example.com --set ingress.tlsSecretName=queue-tls
 ```
 
-On k3s the default Traefik ingress handles websockets as-is. To use your own Redis/Valkey instead, set `valkey.enabled=false` and either `externalRedis.url` or `externalRedis.existingSecret`. See [`charts/in-person-queue/values.yaml`](charts/in-person-queue/values.yaml) for everything else. More than one app replica needs sticky sessions on the ingress.
+It runs one replica, with `Recreate` updates and a small PVC for the state file. On k3s, the default Traefik ingress streams server-sent events with no extra config. See [`charts/in-person-queue/values.yaml`](charts/in-person-queue/values.yaml) for the options.
 
 Changing anything under `charts/` requires bumping `version` in `Chart.yaml` (CI enforces it), because published chart versions are never overwritten.
 
+### Bare metal / Raspberry Pi
+
+```sh
+GOOS=linux GOARCH=arm64 go build -o in-person-queue .   # the web client is embedded
+./in-person-queue
+```
+
 ### Fly.io
 
-`fly.toml` is included: `fly deploy`, then `fly secrets set REDIS_CONNECTION_STRING=...`.
+`fly.toml` is included: `fly deploy`. Add a [volume](https://fly.io/docs/volumes/) at `/data` to keep queues across deploys.
 
 ### Environment Variables
 
-All optional. `npm start` also reads them from a `.env` file.
+| Variable     | Default                                        | Meaning                                                  |
+| ------------ | ---------------------------------------------- | -------------------------------------------------------- |
+| `PORT`       | `8080`                                         | HTTP port                                                |
+| `STATE_FILE` | `state.json` (`/data/state.json` in the image) | where state is snapshotted; set to empty for memory only |
 
-```env
-PORT=3000
-REDIS_CONNECTION_STRING=redis://:PASSWORD@HOSTNAME:6379   # default: localhost:6379
-CORS_ORIGIN='["https://barakplasma.github.io"]'          # only needed if the client is hosted on another origin
-```
-
-Queues expire 24 hours after they are created.
+Queues expire 24 hours after they are created. Limits: 1,000 people per queue, 10,000 live queues, and 1,000 characters per admin message.
 
 ## Development
 
@@ -118,61 +119,69 @@ Queues expire 24 hours after they are created.
 - The most important goal of this project is to enable an ordinary person to create a vaccine leftover queue extremely quickly and easily.
 - This project should stay SIMPLE to use and implement. I want any beginner to be able to fork/hack this project to fit their needs. The only simpler alternative to this project should be a paper/pencil/clipboard and a loud voice. See http://boringtechnology.club/ for more details
 - The front end must be **accessible**, fast, and work on almost any MOBILE browser.
-- The backend should be easy to self-host, and scale nicely. The backend should be easy to host on a Raspberry Pi, a digital ocean droplet, or a full cluster on EC2 / K8s. This means the backend should be high performance, and simple.
+- The backend should be easy to self-host. The backend should be easy to host on a Raspberry Pi, a digital ocean droplet, or a K8s cluster. This means the backend should be high performance, and simple.
 - I respect DevOps, but this project should be NoOps. An operator should ideally be able to set it up on a brand new rasberry pi once and never login to it again.
 
 ### Technical Design
 
-Vanilla HTML/JavaScript/CSS front-end (no build step, no framework), and a Node.js `http` + Socket.io backend with a Redis/Valkey datastore. Its only runtime dependencies are `socket.io` and `ioredis`.
+See [ADR 0001](docs/adr/0001-go-server-without-redis.md) for why it is built this way.
 
-A queue is named after where the admin created it, as `lat,lon` rounded to 4 decimals (e.g. `32.0800,34.7800`). Each queue is a sorted set (`q:<lat,lon>`), its password and admin message live in a hash (`qm:q:<lat,lon>`), and a geo index (`queues`) powers "nearby queues". The server pushes a `refresh-queue` event to everyone watching a queue whenever it changes.
+- The front-end is vanilla HTML/JavaScript/CSS, with no build step and no framework, embedded in the binary.
+- The back-end is a Go server using only the standard library.
+- All state lives in memory behind one mutex, and is snapshotted to `STATE_FILE` once a second when it has changed, plus on shutdown.
+- Browsers send changes with `fetch`, and receive live updates through [server-sent events](https://developer.mozilla.org/docs/Web/API/EventSource), which reconnect on their own.
+
+A queue is named after where the admin created it, as `lat,lon` rounded to 4 decimals (about 11 m, e.g. `32.0800,34.7800`), so a second admin at the same spot joins the existing queue.
 
 ```mermaid
 sequenceDiagram
   participant A as Admin page
-  participant S as Server
-  participant R as Redis / Valkey
+  participant S as Go server (memory + state.json)
   participant U as User page
-  A->>S: create-queue(lat,lon, password)
-  S->>R: HSETNX password, ZADD "Start Queue", GEOADD
-  U->>S: /room join-queue(lat,lon)
-  U->>S: add-user(lat,lon, userId)
-  S->>R: addToEndOfQueue (Lua, atomic)
-  S-->>U: refresh-queue {queueLength, adminMessage}
-  S-->>A: refresh-queue
-  A->>S: /admin current-user-done (auth: password)
-  S->>R: ZPOPMIN
-  S-->>U: refresh-queue (everyone re-reads their position)
+  A->>S: POST /api/queues {location}
+  S-->>A: 201 {location, password}
+  A->>S: GET /api/queues/{loc}/events?token= (EventSource)
+  U->>S: GET /api/queues/{loc}/events?user= (EventSource)
+  U->>S: POST /api/queues/{loc}/users
+  S-->>U: 201 {userId}
+  S-->>U: data: {length: 2, position: 2}
+  S-->>A: data: {length: 2, head: "Start Queue"}
+  A->>S: POST /api/queues/{loc}/next (Bearer password)
+  S-->>U: data: {length: 1, position: 1}
 ```
 
-The client can be hosted as static files anywhere: by default it talks to the server it was loaded from; set `localStorage.setItem('backend', 'https://your-server')` to point it elsewhere (and set `CORS_ORIGIN` on the server).
+| Method & path                               | Who    | Purpose                                                |
+| ------------------------------------------- | ------ | ------------------------------------------------------ |
+| `GET /api/queues?near=<lat,lon>`            | anyone | five nearest queues within 100 km                      |
+| `POST /api/queues` `{location}`             | anyone | create a queue; returns `{location, password}`, or 409 |
+| `POST /api/queues/{loc}/users`              | anyone | join; returns `{userId}`                               |
+| `DELETE /api/queues/{loc}/users/{id}`       | user   | leave                                                  |
+| `GET /api/queues/{loc}/events?user=&token=` | anyone | SSE stream of `{length, message, position?, head?}`    |
+| `GET /api/queues/{loc}/admin`               | admin  | 204 if the bearer token is the queue's password        |
+| `POST /api/queues/{loc}/next`               | admin  | serve the head of the queue                            |
+| `PUT /api/queues/{loc}/message` `{message}` | admin  | set the admin message                                  |
+| `GET /healthz`                              | probes | liveness/readiness                                     |
 
 ### Getting started with localhost
 
 ```sh
-docker compose up -d valkey   # or any local redis on :6379
-npm install
-npm run dev                   # restarts on file changes
+go run .
 ```
 
-Visit http://localhost:3000. Use the "Launch server" VS Code config to debug.
+Visit http://localhost:8080. Use the "Launch server" VS Code config to debug.
 
 ### Tests
 
-Tests need a Redis/Valkey on `REDIS_CONNECTION_STRING` (default `localhost:6379`). They never flush the database.
-
-- `npm test` runs everything
-- `npm run test:unit` runs the `node:test` unit tests in `test/`
-- `npm run test:e2e` runs the Playwright browser tests in `e2e/` (starts the server for you; run `npx playwright install chromium` once)
-- `npm run lint` formats and lints
+- `go test -race .` runs the Go tests; there are no external services to start.
+- `npm ci && npm run test:e2e` runs the Playwright browser tests in `e2e/`. It starts the Go server for you; run `npx playwright install chromium` once.
+- `gofmt -l .`, `go vet .` and `npm run lint` (Prettier + ESLint) cover formatting and lint.
 
 #### Keywords / Buzzwords
 
-- WebSockets
-- Socket.io
-- Redis
+- Go
+- Server-Sent Events
 - Vanilla.js
 - Docker
-- Fly.io
+- Helm / k3s
 
 <div>Some Icons made by <a href="https://www.freepik.com" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>

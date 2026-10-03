@@ -1,64 +1,43 @@
 import {
-  connect,
+  api,
   displayLocation,
-  generateUserId,
   getQueue,
   goHome,
-  request,
+  queuePath,
   setText,
   urlSearchParams,
   vibrate,
+  watchQueue,
 } from './sharedClientUtils.js';
 
-const roomSocket = connect('room');
 const queue = getQueue();
 const userId = urlSearchParams.get('userId');
 if (!queue) goHome();
 let lastPosition;
 
-// (re)join the room on every (re)connect; rooms don't survive reconnects
-roomSocket.on('connect', () => roomSocket.emit('join-queue', queue));
-
-roomSocket.on('refresh-queue', ({queueLength, adminMessage}) => {
-  setText('#queueLengthCount', queueLength);
-  setText('#admin-message', adminMessage);
-  refreshPosition().catch(console.error);
-});
-
-async function refreshPosition() {
+watchQueue(queue, userId ? {user: userId} : {}, ({gone, length, message, position}) => {
+  if (gone) return setText('#admin-message', 'This queue has closed.');
+  setText('#queueLengthCount', length);
+  setText('#admin-message', message);
   if (!userId) return;
-  const {currentPosition} = await request(roomSocket, 'get-my-position', queue, userId);
-  const display = currentPosition === null ? 'Not in queue' : currentPosition + 1;
+  const display = position ?? 'Not in queue';
   setText('#position-in-queue', display);
   if (lastPosition !== undefined && lastPosition !== display) vibrate();
   lastPosition = display;
   document.title = `Queue: ${display} - ${userId}`;
-}
-
-async function refresh() {
-  try {
-    const [{queueLength}, {adminMessage}] = await Promise.all([
-      request(roomSocket, 'get-queue-length', queue),
-      request(roomSocket, 'get-admin-message', queue),
-      refreshPosition(),
-    ]);
-    setText('#queueLengthCount', queueLength);
-    setText('#admin-message', adminMessage);
-  } catch (error) {
-    console.error(error);
-  }
-}
+});
 
 async function join() {
-  const newUserId = generateUserId();
-  const {error} = await request(roomSocket, 'add-user', queue, newUserId);
+  const {error, userId} = await api(`${queuePath(queue)}/users`, {method: 'POST'});
   if (error) return alert(error);
-  urlSearchParams.set('userId', newUserId);
+  urlSearchParams.set('userId', userId);
   location.search = urlSearchParams.toString();
 }
 
 async function done() {
-  if (userId) await request(roomSocket, 'user-done', queue, userId).catch(console.error);
+  if (userId) {
+    await api(`${queuePath(queue)}/users/${encodeURIComponent(userId)}`, {method: 'DELETE'});
+  }
   goHome();
 }
 
@@ -67,9 +46,7 @@ if (userId) {
   setText('#userId', userId);
 }
 displayLocation();
-refresh();
 
 document.querySelector('#join-queue')?.addEventListener('click', join);
-document.querySelector('#refresh-queue').addEventListener('click', refresh);
-document.querySelector('#queueLengthContainer').addEventListener('click', refresh);
+document.querySelector('#refresh-queue').addEventListener('click', () => location.reload());
 document.querySelectorAll('.done').forEach((d) => d.addEventListener('click', done));

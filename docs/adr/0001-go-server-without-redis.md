@@ -1,6 +1,6 @@
 # ADR 0001: Rewrite the server in Go, with no Redis
 
-- Status: Accepted (2026-10-03)
+- Status: Accepted and implemented (2026-10-03)
 - Date: 2026-10-03
 
 ## Decisions confirmed by the maintainer
@@ -160,6 +160,17 @@ Bad / accepted:
 - SSE over HTTP/1.1 is limited to 6 connections per browser per host. Each page uses one, and HTTP/2 behind any TLS proxy removes the limit.
 - The admin token appears in the SSE URL query. That's acceptable over HTTPS; it's already in the admin page URL today.
 - A JavaScript toolchain remains only for Playwright e2e tests.
+
+## Implementation notes
+
+Where the implementation differs from the plan above:
+
+- `POST /api/queues` returns `{location, password}`; the location is the canonical rounded form.
+- Added `GET /api/queues/{location}/admin`, which returns 204 or 401. The admin page uses it to show "not authorized", because `EventSource` can't report HTTP status codes.
+- Latitude is allowed over the full ±90° range; the ±85.05° limit came from Redis geo and is gone.
+- The client always talks to the server that served it. The Node version's cross-origin `backend` option and `CORS_ORIGIN` setting were dropped, since the client is embedded in the binary.
+- Responses carry a `Content-Security-Policy` (`default-src 'self'`) and `Referrer-Policy: no-referrer`, because admin URLs contain the password.
+- Image: 11 MB `FROM scratch`, down from 253 MB for the Node image.
 
 ## Alternatives considered
 

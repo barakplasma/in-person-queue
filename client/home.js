@@ -1,6 +1,4 @@
-import {connect, request, setText} from './sharedClientUtils.js';
-
-const homeSocket = connect('');
+import {api, setText} from './sharedClientUtils.js';
 
 /** @return {Promise<string>} "lat,lon" of the current location */
 function getLocation() {
@@ -18,12 +16,9 @@ function getLocation() {
   });
 }
 
-function gotoPage(pageName, params) {
-  location.href = `${pageName}.html?${new URLSearchParams(params)}`;
-}
-
 async function showNearbyQueues() {
-  const queues = await request(homeSocket, 'get-closest-queues', await getLocation());
+  const queues = await api(`/queues?${new URLSearchParams({near: await getLocation()})}`);
+  if (queues.error) throw Error(queues.error);
   const tbody = document.querySelector('#queues tbody');
   if (!queues.length) {
     const cell = tbody.insertRow().insertCell();
@@ -36,20 +31,17 @@ async function showNearbyQueues() {
     a.href = `queue.html?${new URLSearchParams({location: queue})}`;
     a.textContent = queue;
     row.insertCell().append(a);
-    row.insertCell().textContent = `${Math.ceil(parseFloat(distance))} meters`;
+    row.insertCell().textContent = `${Math.ceil(distance)} meters`;
   }
 }
 
 async function createQueue() {
-  const password = crypto.randomUUID();
-  const {error, location} = await request(
-    homeSocket,
-    'create-queue',
-    await getLocation(),
-    password,
-  );
+  const {error, location, password} = await api('/queues', {
+    method: 'POST',
+    body: {location: await getLocation()},
+  });
   if (error) return alert(error);
-  gotoPage('admin', {location, password});
+  window.location.href = `admin.html?${new URLSearchParams({location, password})}`;
 }
 
 showNearbyQueues().catch(console.error);

@@ -1,10 +1,5 @@
-node_modules/
-*.pem
-.env
-.git/
-.github/
-.vscode/
-test/
-e2e/
-test-results/
-playwright-report/
+*
+!go.mod
+!*.go
+!client/
+*_test.go
