@@ -5,45 +5,32 @@ on:
   push:
     branches: [main]
 
+# a newer push to the same PR cancels the older run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  go:
-    strategy:
-      matrix:
-        # arm64 too: the binary is deployed on ARM servers, and the SQLite driver is per-architecture code
-        runner: [ubuntu-latest, ubuntu-24.04-arm]
-    runs-on: ${{ matrix.runner }}
+  # Pull requests run only this: fast checks in one job. It is also the required status check.
+  build:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # for the chart version check
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: azure/setup-helm@v5
       - run: test -z "$(gofmt -l *.go)" || (gofmt -d *.go && exit 1)
       - run: go vet .
-      - run: go test -race -cover .
-      - name: Known vulnerabilities (including the Go standard library)
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest .
-
-  e2e:
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    # keep in sync with the @playwright/test version in package.json
-    container: mcr.microsoft.com/playwright:v1.63.0-noble
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: go.mod
-      - run: npm ci
-      - run: npx prettier --check . && npx eslint .
-      - run: npm run test:e2e
-
-  chart:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: azure/setup-helm@v5
+      - run: go test .
+      - run: npm ci && npx prettier --check . && npx eslint .
+      - run: helm lint charts/in-person-queue --strict
       - name: Chart version bumped when the chart changes
         if: github.event_name == 'pull_request'
         run: |
@@ -56,7 +43,45 @@ jobs:
               exit 1
             fi
           fi
-      - run: helm lint charts/in-person-queue --strict
+
+  # main only: the slower, deeper checks, all of which must pass before anything is published.
+
+  go:
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        # arm64 too: the binary is deployed on ARM servers, and the SQLite driver is per-architecture code
+        runner: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: go test -race -cover .
+      - name: Known vulnerabilities (including the Go standard library)
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest .
+
+  e2e:
+    if: github.event_name == 'push'
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    # keep in sync with the @playwright/test version in package.json
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: npm ci
+      - run: npm run test:e2e
+
+  chart:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/setup-helm@v5
       - name: Validate rendered manifests (incl. the Traefik Middleware CRD)
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
@@ -66,7 +91,7 @@ jobs:
           helm template t charts/in-person-queue --set persistence.enabled=false | $kubeconform
 
   image:
-    needs: [go, e2e]
+    needs: [build, go, e2e, chart]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -79,34 +104,21 @@ jobs:
           echo "version=$(sed -nE "s/^appVersion: ['\"]?([^'\"]+)['\"]?$/\1/p" charts/in-person-queue/Chart.yaml)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
-        if: github.event_name == 'push'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # PRs only build (to catch Dockerfile breakage); main also pushes
       - uses: docker/build-push-action@v7
         with:
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name == 'push' }}
+          push: true
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
             ghcr.io/${{ github.repository }}:${{ github.sha }}
 
-  # The required status check in branch protection: green only when every job above is.
-  build:
-    if: always()
-    needs: [go, e2e, chart, image]
-    runs-on: ubuntu-latest
-    steps:
-      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        run: exit 1
-      - run: echo all checks passed
-
   publish-chart:
-    needs: [chart, image]
-    if: github.event_name == 'push'
+    needs: [image]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -126,11 +138,10 @@ jobs:
           helm package charts/in-person-queue
           helm push in-person-queue-*.tgz "$repo"
 
-  # Releases on main when docs/releases/<appVersion>.md exists and isn't released yet:
+  # Releases when docs/releases/<appVersion>.md exists and isn't released yet:
   # its first line (a "# " heading) is the title, the rest the notes.
   release:
-    needs: [build]
-    if: github.event_name == 'push'
+    needs: [image]
     runs-on: ubuntu-latest
     permissions:
       contents: write
