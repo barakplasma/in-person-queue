@@ -1,6 +1,8 @@
 import {
   api,
   displayLocation,
+  formatDateTime,
+  formatWait,
   getQueue,
   goHome,
   queuePath,
@@ -17,11 +19,15 @@ const key = urlSearchParams.get('key') ?? ''; // proves we are userId, to leave
 if (!queue) goHome();
 let lastPosition;
 
-watchQueue(queue, userId ? {user: userId} : {}, ({gone, length, message, position, people}) => {
+watchQueue(queue, userId ? {user: userId} : {}, (state) => {
+  const {gone, length, message, position, people, closes, serviceSeconds} = state;
   if (gone) return setText('#admin-message', 'This queue has closed.');
   setText('#queueLengthCount', length);
   setText('#admin-message', message);
-  renderPeople(people, userId);
+  setText('#closes', formatDateTime(closes));
+  // in line: the people ahead of you; not yet: everyone
+  setText('#wait', formatWait(position ? position - 1 : length, serviceSeconds));
+  renderPeople(people, userId, serviceSeconds);
   if (!userId) return;
   const display = position ?? 'Not in queue';
   setText('#position-in-queue', display);

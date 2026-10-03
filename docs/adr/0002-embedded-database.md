@@ -39,10 +39,10 @@ All of them are embeddable, and all compile with `CGO_ENABLED=0`.
 
 ### Data model
 
-| Key               | Type       | Contents                                                                                                       |
-| ----------------- | ---------- | -------------------------------------------------------------------------------------------------------------- |
-| `queue:<lat,lon>` | hash       | `password` (SHA-256), `message`, `seq` (last ticket number), `expires` (unix ms), `joined:<user id>` (unix ms) |
-| `users:<lat,lon>` | sorted set | user id (`A001`…`Z999`, from the ticket number) → ticket number                                                |
+| Key               | Type       | Contents                                                                                                                                                                                     |
+| ----------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `queue:<lat,lon>` | hash       | `password` (SHA-256), `message`, `seq` (last ticket number), `expires` (unix ms), `joined:<user id>` (unix ms), `served` and `service` (for the [wait estimate](0003-wait-time-estimate.md)) |
+| `users:<lat,lon>` | sorted set | user id (`A001`…`Z999`, from the ticket number) → ticket number                                                                                                                              |
 
 ### Notes
 

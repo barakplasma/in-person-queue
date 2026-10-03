@@ -35,7 +35,7 @@ export const queuePath = (queue) => `/queues/${encodeURIComponent(queue)}`;
  * Live queue state from the server; the browser reconnects on its own.
  * @param {string} queue
  * @param {Record<string, string>} params user and/or token
- * @param {(state: {gone?: boolean, length: number, message: string, position?: number, head?: string, people: {id: string, joined: number}[]}) => void} onState
+ * @param {(state: {gone?: boolean, length: number, message: string, position?: number, head?: string, people: {id: string, joined: number}[], closes: number, serviceSeconds?: number}) => void} onState
  */
 export function watchQueue(queue, params, onState) {
   const events = new EventSource(`api${queuePath(queue)}/events?${new URLSearchParams(params)}`);
@@ -77,7 +77,7 @@ export function displayLocation() {
  * @param {{id: string, joined: number}[]} people
  * @param {string} [me] the viewer's id, highlighted
  */
-export function renderPeople(people, me) {
+export function renderPeople(people, me, serviceSeconds) {
   const tbody = document.querySelector('#people tbody');
   tbody.replaceChildren();
   people.forEach(({id, joined}, i) => {
@@ -87,11 +87,32 @@ export function renderPeople(people, me) {
       .insertCell()
       .appendChild(document.createElement(id === me ? 'mark' : 'span'));
     ticket.textContent = id;
-    row.insertCell().textContent = new Date(joined).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    row.insertCell().textContent = formatTime(joined);
+    row.insertCell().textContent = formatWait(i, serviceSeconds);
   });
+}
+
+/** @param {number} ms unix ms */
+export const formatTime = (ms) =>
+  new Date(ms).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+
+/** @param {number} ms unix ms */
+export const formatDateTime = (ms) =>
+  new Date(ms).toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'});
+
+/**
+ * Estimated wait behind `ahead` people, from the server's measured time to serve one person
+ * (see estimateService in store.go).
+ * @param {number} ahead
+ * @param {number | undefined} serviceSeconds undefined until the admin has served someone
+ */
+export function formatWait(ahead, serviceSeconds) {
+  if (ahead === 0) return 'now';
+  if (!(serviceSeconds > 0)) return 'estimating…';
+  const seconds = ahead * serviceSeconds;
+  if (seconds < 60) return 'under a minute';
+  const minutes = Math.round(seconds / 60);
+  return minutes < 60 ? `~${minutes} min` : `~${Math.floor(minutes / 60)} h ${minutes % 60} min`;
 }
 
 /** Sets the text of an element, if it exists on this page. */

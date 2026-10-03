@@ -51,6 +51,9 @@ func TestAPI(t *testing.T) {
 	if resp, body := call(t, "GET", api+"?near=nonsense", "", ""); resp.StatusCode != http.StatusBadRequest || !strings.Contains(body["error"].(string), "invalid location") {
 		t.Errorf("bad location = %d %v", resp.StatusCode, body)
 	}
+	if resp, _ := call(t, "POST", api, "", `{"location":"1,1","closes":"2001-01-01T00:00:00Z"}`); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("create closing in the past = %d; want 400", resp.StatusCode)
+	}
 	if resp, _ := call(t, "POST", api, "", `not json`); resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("bad body = %d; want 400", resp.StatusCode)
 	}

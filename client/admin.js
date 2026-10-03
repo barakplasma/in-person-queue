@@ -1,6 +1,8 @@
 import {
   api,
   displayLocation,
+  formatDateTime,
+  formatWait,
   getQueue,
   queuePath,
   renderPeople,
@@ -20,10 +22,12 @@ async function start() {
   if (error) return setText('#userId', `Not authorized for this queue (${error})`);
 
   let firstState = true;
-  watchQueue(queue, {token}, ({gone, length, message, head, people}) => {
+  watchQueue(queue, {token}, ({gone, length, message, head, people, closes, serviceSeconds}) => {
     if (gone) return setText('#userId', 'This queue has closed.');
     setText('#queueLengthCount', length);
-    renderPeople(people);
+    setText('#wait', formatWait(length, serviceSeconds));
+    setText('#closes', formatDateTime(closes));
+    renderPeople(people, undefined, serviceSeconds);
     setText('#userId', head || 'Queue is empty');
     if (firstState) document.querySelector('#admin-message').value = message;
     firstState = false;
@@ -49,6 +53,8 @@ function displayShareLink() {
   const url = new URL('queue.html', location.href);
   url.searchParams.set('location', queue);
   document.querySelector('#shareLink a').href = url.href;
+  document.querySelector('#displayLink').href =
+    `display.html?${new URLSearchParams({location: queue})}`;
   const shareData = {title: 'Join Queue', text: `Join Queue at ${queue}`, url: url.href};
   if (navigator.canShare?.(shareData)) {
     const button = document.querySelector('#shareButton');

@@ -5,6 +5,7 @@ import (
 	"math"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ func newTestStore(t *testing.T) *Store {
 func newTestQueue(t *testing.T) (*Store, string) {
 	t.Helper()
 	s := newTestStore(t)
-	password, err := s.Create(testLocation)
+	password, err := s.Create(testLocation, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +82,7 @@ func TestCreate(t *testing.T) {
 	if !s.Authorized(testLocation, password) {
 		t.Error("creator's password rejected")
 	}
-	if _, err := s.Create(testLocation); !errors.Is(err, errExists) {
+	if _, err := s.Create(testLocation, time.Time{}); !errors.Is(err, errExists) {
 		t.Errorf("second create err = %v; want errExists (would hijack the admin)", err)
 	}
 	if !s.Authorized(testLocation, password) {
@@ -230,7 +231,7 @@ func TestExpiry(t *testing.T) {
 	default:
 		t.Error("subscribers not told about the expired queue")
 	}
-	if _, err := s.Create(testLocation); err != nil {
+	if _, err := s.Create(testLocation, time.Time{}); err != nil {
 		t.Errorf("can't recreate an expired queue: %v", err)
 	}
 	if v := s.View(testLocation, "", true); v.Length != 1 || *v.Head != startMarker {
@@ -252,8 +253,8 @@ func TestEmptiedQueueKeepsExpiring(t *testing.T) {
 
 func TestNearby(t *testing.T) {
 	s, _ := newTestQueue(t)
-	s.Create("32.1000,34.7800") // ~2.2km
-	s.Create("33.5000,34.7800") // ~158km: out of range
+	s.Create("32.1000,34.7800", time.Time{}) // ~2.2km
+	s.Create("33.5000,34.7800", time.Time{}) // ~158km: out of range
 	got, err := s.Nearby(32.0809, 34.78)
 	if err != nil {
 		t.Fatal(err)
@@ -272,7 +273,7 @@ func TestPersistsAcrossRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	password, err := s.Create(testLocation)
+	password, err := s.Create(testLocation, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,5 +294,55 @@ func TestPersistsAcrossRestart(t *testing.T) {
 	}
 	if id, _, err := s.Join(testLocation); err != nil || id != "A003" || position(s, id) != 4 {
 		t.Errorf("join after restart: %q at %d, %v; want position 4", id, position(s, id), err)
+	}
+}
+
+func TestCloses(t *testing.T) {
+	s := newTestStore(t)
+	for _, bad := range []time.Time{time.Now().Add(-time.Minute), time.Now().Add(maxOpen + time.Hour)} {
+		if _, err := s.Create(testLocation, bad); !errors.Is(err, errInvalidCloses) {
+			t.Errorf("Create closing at %v err = %v; want errInvalidCloses", bad, err)
+		}
+	}
+	closes := time.Now().Add(72 * time.Hour).Truncate(time.Millisecond)
+	if _, err := s.Create(testLocation, closes); err != nil {
+		t.Fatal(err)
+	}
+	if got := s.View(testLocation, "", false).Closes; got != closes.UnixMilli() {
+		t.Errorf("closes = %d; want %d", got, closes.UnixMilli())
+	}
+}
+
+func TestServiceEstimate(t *testing.T) {
+	s, _ := newTestQueue(t)
+	ago := func(d time.Duration) { // pretends the last serve was d ago
+		s.db.Update(func(tx *redka.Tx) error {
+			_, err := tx.Hash().Set(metaKey(testLocation), "served", strconv.FormatInt(time.Now().Add(-d).UnixMilli(), 10))
+			return err
+		})
+	}
+	service := func() float64 { return s.View(testLocation, "", false).ServiceSeconds }
+	join(t, s, 3)
+	ago(time.Hour)
+	s.Next(testLocation) // the start marker: starting the queue isn't service time
+	if got := service(); got != 0 {
+		t.Errorf("estimate after starting = %v; want none yet", got)
+	}
+	ago(60 * time.Second)
+	s.Next(testLocation)
+	if got := service(); math.Abs(got-60) > 1 {
+		t.Errorf("estimate after one 60s serve = %v; want 60", got)
+	}
+	ago(30 * time.Second)
+	s.Next(testLocation)
+	if want := 0.3*30 + 0.7*60; math.Abs(service()-want) > 1 {
+		t.Errorf("estimate after a 30s serve = %v; want the moving average %v", service(), want)
+	}
+	s.Next(testLocation) // empty now
+	ago(time.Hour)       // idle for an hour
+	join(t, s, 1)        // restarts the clock
+	s.Next(testLocation)
+	if got := service(); got > 51 {
+		t.Errorf("estimate = %v; idle time leaked into it", got)
 	}
 }
