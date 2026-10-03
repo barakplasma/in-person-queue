@@ -11,9 +11,10 @@ module.exports = defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'node server.js',
-    url: `http://localhost:${PORT}/healthcheck`,
+    command: 'go run .',
+    url: `http://localhost:${PORT}/healthz`,
     reuseExistingServer: !process.env.CI,
-    env: {PORT},
+    timeout: 120_000, // first run compiles
+    env: {PORT, DB_FILE: ''}, // in-memory database
   },
 });

@@ -1,25 +1,50 @@
 export const urlSearchParams = new URLSearchParams(location.search);
 
-/**
- * Socket.io backend; defaults to the server that served this page.
- * Set localStorage 'backend' (e.g. "https://queue.example.com") when hosting the client elsewhere.
- */
-const backend = localStorage.getItem('backend') ?? '';
-// socket.io serves its own (version-matched) client
-const {io} = await import(`${backend}/socket.io/socket.io.esm.min.js`);
-
-/**
- * @param {'' | 'room' | 'admin'} namespace
- * @param {object} [options]
- */
-export function connect(namespace, options) {
-  return io(`${backend}/${namespace}`, options);
-}
-
 /** @return {string} the "lat,lon" of the current queue, or '' if the link is invalid */
 export function getQueue() {
   const location = urlSearchParams.get('location') ?? '';
   return /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(location) ? location : '';
+}
+
+/**
+ * Calls the JSON API. Resolves with the response body, or {error} on failure.
+ * @param {string} path e.g. "/queues"
+ * @param {{method?: string, body?: object, token?: string}} [options]
+ */
+export async function api(path, {method = 'GET', body, token} = {}) {
+  try {
+    const response = await fetch(`api${path}`, {
+      method,
+      headers: {
+        ...(body && {'Content-Type': 'application/json'}),
+        ...(token && {Authorization: `Bearer ${token}`}),
+      },
+      body: body && JSON.stringify(body),
+    });
+    const data = response.status === 204 ? {} : await response.json();
+    return response.ok ? data : {error: data.error ?? response.statusText};
+  } catch (error) {
+    return {error: error.message};
+  }
+}
+
+/** API path for a queue */
+export const queuePath = (queue) => `/queues/${encodeURIComponent(queue)}`;
+
+/**
+ * Live queue state from the server; the browser reconnects on its own.
+ * @param {string} queue
+ * @param {Record<string, string>} params user and/or token
+ * @param {(state: {gone?: boolean, length: number, message: string, position?: number, head?: string}) => void} onState
+ */
+export function watchQueue(queue, params, onState) {
+  const events = new EventSource(`api${queuePath(queue)}/events?${new URLSearchParams(params)}`);
+  events.onmessage = (event) => {
+    const state = JSON.parse(event.data);
+    if (state.gone) events.close();
+    onState(state);
+  };
+  return events;
 }
 
 export function displayLocation() {
@@ -31,14 +56,6 @@ export function displayLocation() {
     a.target = '_blank';
     a.textContent = location;
   }
-}
-
-export function generateUserId() {
-  const distinguishableCharacters = 'CDEHKMPRTUWXY012458';
-  return Array.from(
-    crypto.getRandomValues(new Uint8Array(6)),
-    (n) => distinguishableCharacters[n % distinguishableCharacters.length],
-  ).join('');
 }
 
 /** Sets the text of an element, if it exists on this page. */
@@ -53,9 +70,4 @@ export function vibrate() {
 
 export function goHome() {
   location.href = location.pathname.replace(/[^/]*$/, '');
-}
-
-/** Resolves with a socket.io ack, or rejects after a timeout. */
-export function request(socket, event, ...args) {
-  return socket.timeout(5000).emitWithAck(event, ...args);
 }

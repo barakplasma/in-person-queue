@@ -1,6 +1,7 @@
 node_modules/
 *.pem
 .env
-*.rdb
+queues.db
+queues.db-*
 test-results/
 playwright-report/

@@ -1,23 +1,42 @@
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "iq.fullname" . }}
+  labels: {{- include "iq.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.persistence.storageClass }}
+  storageClassName: {{ . }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+---
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "iq.fullname" . }}
   labels: {{- include "iq.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicaCount }}
+  # state is in-process: never run two at once (RWO volume, and they'd diverge)
+  replicas: 1
+  strategy: {type: Recreate}
   selector:
     matchLabels: {{- include "iq.selector" . | nindent 6 }}
   template:
     metadata:
       labels: {{- include "iq.selector" . | nindent 8 }}
-      annotations:
-        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
     spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1000
-        runAsGroup: 1000
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: app
@@ -26,26 +45,28 @@ spec:
           ports:
             - {name: http, containerPort: 8080}
           env:
-            - name: REDIS_CONNECTION_STRING
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "iq.secretName" . }}
-                  key: {{ if .Values.externalRedis.existingSecret }}{{ .Values.externalRedis.existingSecretKey }}{{ else }}REDIS_CONNECTION_STRING{{ end }}
-            {{- with .Values.corsOrigin }}
-            - {name: CORS_ORIGIN, value: {{ . | quote }}}
-            {{- end }}
-          # readiness waits for redis; liveness doesn't, so a redis outage doesn't restart-loop the app
+            - name: DB_FILE
+              value: /data/queues.db
           readinessProbe:
-            httpGet: {path: /healthcheck, port: http}
+            httpGet: {path: /healthz, port: http}
             periodSeconds: 5
           livenessProbe:
-            tcpSocket: {port: http}
+            httpGet: {path: /healthz, port: http}
             periodSeconds: 10
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim: {claimName: {{ include "iq.fullname" . }}}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

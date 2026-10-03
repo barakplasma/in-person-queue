@@ -3,11 +3,10 @@
   "configurations": [
     {
       "name": "Launch server",
-      "type": "node",
+      "type": "go",
       "request": "launch",
-      "program": "${workspaceFolder}/server.js",
-      "runtimeArgs": ["--env-file-if-exists=.env"],
-      "skipFiles": ["<node_internals>/**"]
+      "mode": "auto",
+      "program": "${workspaceFolder}"
     }
   ]
 }

@@ -4,7 +4,11 @@ kind: Ingress
 metadata:
   name: {{ include "iq.fullname" . }}
   labels: {{- include "iq.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+  {{- $annotations := deepCopy .Values.ingress.annotations }}
+  {{- if .Values.rateLimit.enabled }}
+  {{- $_ := set $annotations "traefik.ingress.kubernetes.io/router.middlewares" (printf "%s-%s-ratelimit@kubernetescrd" .Release.Namespace (include "iq.fullname" .)) }}
+  {{- end }}
+  {{- with $annotations }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
