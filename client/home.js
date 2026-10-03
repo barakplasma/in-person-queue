@@ -31,8 +31,13 @@ async function showNearbyQueues() {
     a.href = `queue.html?${new URLSearchParams({location: queue})}`;
     a.textContent = queue;
     row.insertCell().append(a);
-    row.insertCell().textContent = `${Math.ceil(distance)} meters`;
+    row.insertCell().textContent = formatDistance(distance);
   }
+}
+
+/** @param {number} meters */
+function formatDistance(meters) {
+  return meters < 1000 ? `${Math.round(meters)} m` : `${(meters / 1000).toFixed(1)} km`;
 }
 
 async function createQueue() {

@@ -24,7 +24,9 @@
     <section>
       <aside>
         <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span></p>
-        <p id="locationContainer">Location: <a id="location">N/A</a></p>
+        <p id="locationContainer">
+          Location: <a id="location">N/A</a> (<a id="location-osm">OpenStreetMap</a>)
+        </p>
         <p id="shareLink">
           link to join queue as user: <a>link</a>
           <button id="shareButton" type="button" hidden>
@@ -32,6 +34,21 @@
           </button>
         </p>
       </aside>
+    </section>
+    <section>
+      <table id="people">
+        <caption>
+          In line
+        </caption>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ticket</th>
+            <th>Joined</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </section>
     <section>
       <form action="">
@@ -42,7 +59,7 @@
           placeholder="Use this form to give your queue users some details on what this queue is for, what to do when it is their turn, and who you are."
           id="admin-message"
           spellcheck="true"
-          maxlength="1000"
+          maxlength="10000"
         ></textarea>
         <button id="submit-admin-message" type="button">update admin message</button>
       </form>

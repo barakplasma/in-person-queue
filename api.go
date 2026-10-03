@@ -61,9 +61,9 @@ func newHandler(s *Store, static fs.FS) http.Handler {
 	mux.HandleFunc("POST /api/queues/{loc}/users", func(w http.ResponseWriter, r *http.Request) {
 		location, err := pathLocation(r)
 		if err == nil {
-			var id string
-			if id, err = s.Join(location); err == nil {
-				writeJSON(w, http.StatusCreated, map[string]string{"userId": id})
+			var id, key string
+			if id, key, err = s.Join(location); err == nil {
+				writeJSON(w, http.StatusCreated, map[string]string{"userId": id, "key": key})
 				return
 			}
 		}
@@ -73,7 +73,7 @@ func newHandler(s *Store, static fs.FS) http.Handler {
 	mux.HandleFunc("DELETE /api/queues/{loc}/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		location, err := pathLocation(r)
 		if err == nil {
-			err = s.Leave(location, r.PathValue("id"))
+			err = s.Leave(location, r.PathValue("id"), bearer(r))
 		}
 		writeResult(w, err)
 	})
@@ -144,8 +144,6 @@ func streamEvents(w http.ResponseWriter, r *http.Request, s *Store, location, us
 	}
 }
 
-var errUnauthorized = errors.New("not authorized for this queue")
-
 // admin wraps a handler that requires the queue's password as a bearer token.
 func admin(s *Store, next func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -154,13 +152,17 @@ func admin(s *Store, next func(http.ResponseWriter, *http.Request, string)) http
 			writeError(w, err)
 			return
 		}
-		password, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if !s.Authorized(location, password) {
+		if !s.Authorized(location, bearer(r)) {
 			writeError(w, errUnauthorized)
 			return
 		}
 		next(w, r, location)
 	}
+}
+
+func bearer(r *http.Request) string {
+	token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+	return token
 }
 
 func pathLocation(r *http.Request) (string, error) {
@@ -169,7 +171,7 @@ func pathLocation(r *http.Request) (string, error) {
 }
 
 func readJSON(w http.ResponseWriter, r *http.Request, v any) error {
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(v); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 128<<10)).Decode(v); err != nil {
 		return fmt.Errorf("%w: %v", errBadRequest, err)
 	}
 	return nil

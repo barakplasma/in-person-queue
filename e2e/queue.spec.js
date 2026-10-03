@@ -27,6 +27,7 @@ test('home page lists the nearby queue', async ({page, context}) => {
   const home = await context.newPage();
   await home.goto('/');
   await expect(home.locator('#queues a')).toHaveText([location]);
+  await expect(home.locator('#queues td').nth(1)).toHaveText(/^\d+ m$/);
   await expect(home.locator('header a')).toHaveAttribute(
     'href',
     'https://barakplasma.github.io/in-person-queue/',
@@ -43,8 +44,12 @@ test('user can join and leave a queue', async ({page, context}) => {
   await expect(user.locator('#location')).toHaveText(location);
 
   await user.click('#join-queue');
-  await user.waitForURL(/userId=[A-Z0-9]{6}/);
-  await expect(user.locator('#userId')).toHaveText(/^[A-Z0-9]{6}$/);
+  await user.waitForURL(/userId=A001/);
+  await expect(user.locator('#userId')).toHaveText('A001');
+  await expect(user.locator('#people tbody tr')).toHaveCount(2);
+  await expect(user.locator('#people mark')).toHaveText('A001');
+  await expect(page.locator('#people tbody td:nth-child(2)')).toHaveText(['Start Queue', 'A001']);
+  await expect(page.locator('#people tbody td:nth-child(3)').first()).toHaveText(/\d\d/);
   await expect(user.locator('#position-in-queue')).toHaveText('2');
   await expect(user.locator('#queueLengthCount')).toHaveText('2');
   await expect(user.locator('#join-queue')).toHaveCount(0);
@@ -123,19 +128,40 @@ test('malformed input is rejected without hurting the server', async ({request})
   expect((await request.get('/healthz')).ok()).toBeTruthy();
 });
 
-test('location links to OpenStreetMap, rounded to ~11m', async ({page}) => {
-  const {latitude, longitude} = randomLocation();
-  await page.context().setGeolocation({latitude, longitude});
-  await page.goto('/');
-  await page.click('#becomeAdmin');
-  await page.waitForURL(/admin\.html/);
-  const [lat, lon] = [latitude.toFixed(4), longitude.toFixed(4)];
-  await expect(page.locator('#location')).toHaveText(`${lat},${lon}`);
-  await expect(page.locator('#location')).toHaveAttribute(
-    'href',
-    `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`,
-  );
-});
+const osm = (lat, lon) =>
+  `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`;
+
+for (const [phone, userAgent, href] of [
+  ['desktop', undefined, (lat, lon) => osm(lat, lon)],
+  [
+    'iPhone',
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)',
+    (lat, lon) => `https://maps.apple.com/?ll=${lat},${lon}&q=${lat},${lon}`,
+  ],
+  [
+    'Android',
+    'Mozilla/5.0 (Linux; Android 15; Pixel 9)',
+    (lat, lon) => `geo:${lat},${lon}?q=${lat},${lon}`,
+  ],
+]) {
+  test(`location opens the maps app on ${phone}, rounded to ~11m`, async ({browser}) => {
+    const {latitude, longitude} = randomLocation();
+    const context = await browser.newContext({
+      userAgent,
+      geolocation: {latitude, longitude},
+      permissions: ['geolocation'],
+    });
+    const page = await context.newPage();
+    await page.goto('/');
+    await page.click('#becomeAdmin');
+    await page.waitForURL(/admin\.html/);
+    const [lat, lon] = [latitude.toFixed(4), longitude.toFixed(4)];
+    await expect(page.locator('#location')).toHaveText(`${lat},${lon}`);
+    await expect(page.locator('#location')).toHaveAttribute('href', href(lat, lon));
+    await expect(page.locator('#location-osm')).toHaveAttribute('href', osm(lat, lon));
+    await context.close();
+  });
+}
 
 test('invalid queue links go back to the home page', async ({page}) => {
   await page.goto('/queue.html?location=nonsense');

@@ -19,7 +19,9 @@
         <mark id="position-in-queue">Not yet in queue</mark>
         <p id="queueLengthContainer">Queue Length: <span id="queueLengthCount">N/A</span></p>
         <p id="userIdContainer">Your User Id: <span id="userId">N/A</span></p>
-        <p id="locationContainer">Location: <a id="location">N/A</a></p>
+        <p id="locationContainer">
+          Location: <a id="location">N/A</a> (<a id="location-osm">OpenStreetMap</a>)
+        </p>
       </aside>
     </section>
     <section>
@@ -28,6 +30,21 @@
         <button id="refresh-queue">Refresh</button>
         <button id="done-btn" class="done">Done</button>
       </p>
+    </section>
+    <section>
+      <table id="people">
+        <caption>
+          In line
+        </caption>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ticket</th>
+            <th>Joined</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </section>
     <style>
       body {

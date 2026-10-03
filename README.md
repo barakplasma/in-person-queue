@@ -14,11 +14,11 @@ A queue anyone can start in seconds, that works on any phone browser and respect
 
 1. **Create a queue**: open the site and tap "Create new queue at my location". The queue is named after where you stand, as `lat,lon` rounded to 4 decimals (about 11 m). A second admin at the same spot joins the existing queue instead of making a duplicate. You land on the admin page, and **its URL is the admin password**, so keep it private.
 2. **Share it**: send the link shown on the admin page, or people can find it under "Nearby Queues" on the home page.
-3. **Join**: people tap "Join Queue" and get a short id and a live position.
+3. **Join**: people tap "Join Queue" and get a ticket in order (`A001`, `A002`, … `A999`, then `B000`, …) and a live position. Everyone, admin included, sees the line in order with when each ticket joined.
 4. **Serve**: the admin taps "Current user done" to serve whoever is at the head of the queue. Everyone's position updates instantly.
 5. **Message**: the admin can post a message, such as what the queue is for or what to bring, which everyone in the queue sees.
 
-Queues expire 24 hours after they are created.
+The location links open the phone's maps app (Apple Maps on iOS, the default `geo:` app on Android), with an OpenStreetMap link as a fallback. Queues expire 24 hours after they are created.
 
 ## Running it
 
@@ -66,7 +66,7 @@ go build -o in-person-queue .   # the web client is embedded; cross-compiles wit
 | `PORT`    | `8080`                                       | HTTP port                                   |
 | `DB_FILE` | `queues.db` (`/data/queues.db` in the image) | database file; set to empty for memory only |
 
-Limits: 1,000 people per queue, 10,000 live queues, 1,000 characters per admin message.
+Limits: 1,000 people waiting per queue, 25,999 tickets per queue (`A001`…`Z999`), 10,000 live queues, 10,000 characters per admin message.
 
 ### Operations
 
@@ -80,7 +80,7 @@ Limits: 1,000 people per queue, 10,000 live queues, 1,000 characters per admin m
 The design favours boring, established building blocks over clever code ([ADR 0001](docs/adr/0001-go-server.md), [ADR 0002](docs/adr/0002-embedded-database.md)):
 
 - **Server**: Go standard library: `net/http`, `embed`, `log/slog`.
-- **Storage**: [Redka](https://github.com/nalgeon/redka), which provides Redis data types on SQLite, through the pure-Go [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite) driver. Each queue is a hash (password hash, message, expiry) plus a sorted set of people scored by ticket number. A person's position is their rank + 1.
+- **Storage**: [Redka](https://github.com/nalgeon/redka), which provides Redis data types on SQLite, through the pure-Go [`modernc.org/sqlite`](https://pkg.go.dev/modernc.org/sqlite) driver. Each queue is a hash (password hash, message, expiry, join times) plus a sorted set of people scored by ticket number. A person's position is their rank + 1.
 - **Live updates**: [server-sent events](https://developer.mozilla.org/docs/Web/API/EventSource). Browsers reconnect on their own.
 - **Client**: plain HTML/JS with [mvp.css](https://andybrewer.github.io/mvp/). No build step, no framework, embedded in the binary.
 
@@ -96,24 +96,24 @@ sequenceDiagram
   U->>S: GET /api/queues/{loc}/events?user= (EventSource)
   U->>S: POST /api/queues/{loc}/users
   S->>D: ZADD users:<loc> <id> <ticket>
-  S-->>U: 201 {userId}
+  S-->>U: 201 {userId, key}
   S-->>U: data: {length: 2, position: 2}
   A->>S: POST /api/queues/{loc}/next (Bearer password)
   S->>D: ZRANGE 0 0 · ZREM
   S-->>U: data: {length: 1, position: 1}
 ```
 
-| Method & path                               | Who    | Purpose                                                |
-| ------------------------------------------- | ------ | ------------------------------------------------------ |
-| `GET /api/queues?near=<lat,lon>`            | anyone | the five nearest queues within 100 km                  |
-| `POST /api/queues` `{location}`             | anyone | create a queue; returns `{location, password}`, or 409 |
-| `POST /api/queues/{loc}/users`              | anyone | join; returns `{userId}`                               |
-| `DELETE /api/queues/{loc}/users/{id}`       | user   | leave                                                  |
-| `GET /api/queues/{loc}/events?user=&token=` | anyone | SSE stream of `{length, message, position?, head?}`    |
-| `GET /api/queues/{loc}/admin`               | admin  | 204 if the bearer token is the queue's password        |
-| `POST /api/queues/{loc}/next`               | admin  | serve the head of the queue                            |
-| `PUT /api/queues/{loc}/message` `{message}` | admin  | set the admin message                                  |
-| `GET /healthz`                              | probes | liveness and readiness                                 |
+| Method & path                               | Who    | Purpose                                                     |
+| ------------------------------------------- | ------ | ----------------------------------------------------------- |
+| `GET /api/queues?near=<lat,lon>`            | anyone | the five nearest queues within 100 km                       |
+| `POST /api/queues` `{location}`             | anyone | create a queue; returns `{location, password}`, or 409      |
+| `POST /api/queues/{loc}/users`              | anyone | join; returns `{userId, key}`                               |
+| `DELETE /api/queues/{loc}/users/{id}`       | user   | leave, with the join `key` as bearer token                  |
+| `GET /api/queues/{loc}/events?user=&token=` | anyone | SSE stream of `{length, message, people, position?, head?}` |
+| `GET /api/queues/{loc}/admin`               | admin  | 204 if the bearer token is the queue's password             |
+| `POST /api/queues/{loc}/next`               | admin  | serve the head of the queue                                 |
+| `PUT /api/queues/{loc}/message` `{message}` | admin  | set the admin message                                       |
+| `GET /healthz`                              | probes | liveness and readiness                                      |
 
 ## Development
 

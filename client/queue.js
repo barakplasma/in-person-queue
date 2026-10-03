@@ -4,6 +4,7 @@ import {
   getQueue,
   goHome,
   queuePath,
+  renderPeople,
   setText,
   urlSearchParams,
   vibrate,
@@ -12,13 +13,15 @@ import {
 
 const queue = getQueue();
 const userId = urlSearchParams.get('userId');
+const key = urlSearchParams.get('key') ?? ''; // proves we are userId, to leave
 if (!queue) goHome();
 let lastPosition;
 
-watchQueue(queue, userId ? {user: userId} : {}, ({gone, length, message, position}) => {
+watchQueue(queue, userId ? {user: userId} : {}, ({gone, length, message, position, people}) => {
   if (gone) return setText('#admin-message', 'This queue has closed.');
   setText('#queueLengthCount', length);
   setText('#admin-message', message);
+  renderPeople(people, userId);
   if (!userId) return;
   const display = position ?? 'Not in queue';
   setText('#position-in-queue', display);
@@ -28,15 +31,19 @@ watchQueue(queue, userId ? {user: userId} : {}, ({gone, length, message, positio
 });
 
 async function join() {
-  const {error, userId} = await api(`${queuePath(queue)}/users`, {method: 'POST'});
+  const {error, userId, key} = await api(`${queuePath(queue)}/users`, {method: 'POST'});
   if (error) return alert(error);
   urlSearchParams.set('userId', userId);
+  urlSearchParams.set('key', key);
   location.search = urlSearchParams.toString();
 }
 
 async function done() {
   if (userId) {
-    await api(`${queuePath(queue)}/users/${encodeURIComponent(userId)}`, {method: 'DELETE'});
+    await api(`${queuePath(queue)}/users/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+      token: key,
+    });
   }
   goHome();
 }
