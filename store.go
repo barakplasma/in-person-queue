@@ -61,13 +61,13 @@ func round4(x float64) float64 {
 	return math.Round(x*1e4)/1e4 + 0 // + 0 turns -0 into 0
 }
 
-// The data model is the Redis one from the Node version, stored by Redka in SQLite:
+// Data model (see docs/adr/0002-embedded-database.md), stored by Redka in SQLite:
 //
 //	queue:<location>  hash:       password (sha256), message, seq (last ticket number), expires (unix ms)
 //	users:<location>  sorted set: user id -> ticket number, so rank = position in line
 //
-// Expiry is ours (the expires field + Sweep) rather than Redka's key TTL: in redka v1.0.1, writing to a
-// key whose TTL has passed keeps the old expiry, so a queue re-created at the same spot stayed invisible.
+// Expiry is ours (the expires field + Sweep), not Redka's key TTL: in redka v1.0.1, writing to a key whose
+// TTL has passed keeps the old expiry, so a queue re-created at the same spot stayed invisible.
 func metaKey(location string) string  { return "queue:" + location }
 func usersKey(location string) string { return "users:" + location }
 

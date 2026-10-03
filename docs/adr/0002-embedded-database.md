@@ -1,146 +1,52 @@
-# ADR 0002: Hand-rolled JSON snapshot vs an embedded database
+# ADR 0002: Embedded database: Redka on SQLite
 
-- Status: Accepted (2026-10-03): **F. Redka on `modernc.org/sqlite`**
-- Deciding factor, from the maintainer: easy and rock-solid operation matters more than performance.
+- Status: Accepted (2026-10-03)
 
 ## Context
 
-ADR 0001 keeps all state in memory and writes it to `state.json` at most once a second (temp file, fsync, rename, fsync the directory). The question is whether a real embedded database would make operations easier or safer.
+The server ([ADR 0001](0001-go-server.md)) needs durable storage for:
 
-Whatever we pick, these parts stay the same:
+- queues: a password hash, a message and an expiry;
+- an ordered list of people per queue, where we can ask "what is this person's position?".
 
-- the in-memory pub/sub that wakes server-sent-event streams;
-- the HTTP API;
-- one replica.
+Priorities, from the maintainer: **maintainability and easy, rock-solid operation** come first, ahead of performance or binary size. Rely on an established embedded store instead of hand-rolled persistence, and run no separate database server.
 
-Only the storage layer underneath changes.
+## Options considered
 
-The data is small and short-lived:
+All of them are embeddable, and all compile with `CGO_ENABLED=0`.
 
-- at most 10,000 queues;
-- at most 1,000 people per queue;
-- everything expires after 24 hours;
-- realistically, a few KB in total.
+| Option                                   | What it is                                                  | Fit                          | Why not chosen                                                                        |
+| ---------------------------------------- | ----------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------- |
+| **Hand-rolled** (map + JSON snapshot)    | our own code                                                | trivial                      | we'd own fsync/rename correctness; up to ~1 s lost on a crash                         |
+| **bbolt**                                | etcd's B+tree key/value store                               | very reliable                | we'd write the queue ordering, expiry and encoding ourselves; weak inspection tooling |
+| **SQLite, plain** (`modernc.org/sqlite`) | SQL                                                         | very reliable, great tooling | we'd own a schema, its migrations and ~100 lines of SQL                               |
+| **BuntDB**                               | in-memory KV with an append-only log, TTL and spatial index | good features                | one author, inactive since 2024, no tooling                                           |
+| **NutsDB**                               | pure-Go store with Redis-like sorted sets                   | good API                     | its own file format with periodic compaction; no tooling outside the Go API           |
+| **Badger / Pebble**                      | LSM trees                                                   | overkill                     | background compaction, many files, tuning knobs                                       |
+| **Redka** (on `modernc.org/sqlite`)      | Redis data types (hash, sorted set, …) stored in SQLite     | **chosen**                   |                                                                                       |
 
-## Options
+## Decision
 
-Binary sizes below are measured: a static `CGO_ENABLED=0` build with `-s -w`, linking net/http plus the library.
+**Redka on the pure-Go `modernc.org/sqlite` driver.**
 
-|                           | **A. JSON snapshot (today)**                     | **B. bbolt**                                          | **C. SQLite (`modernc.org/sqlite`)**                                                   | **D. BuntDB**                                       |
-| ------------------------- | ------------------------------------------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| What it is                | our code: map + mutex + atomic file write        | etcd's B+tree key/value store, one file               | the SQLite engine, translated to pure Go (no cgo)                                      | in-memory key/value store with an append-only log   |
-| Data lost on a crash      | up to ~1 s of changes                            | none (fsync per commit)                               | none (WAL, fsync per commit)                                                           | none with `SyncPolicy: Always` (default: up to 1 s) |
-| Corruption resistance     | good: a reader only ever sees a complete file    | very good (used by etcd and Kubernetes)               | best in class (billions of deployments, huge test suite)                               | ok: the log is rewritten in the background          |
-| Look at the data          | `jq state.json`                                  | `bbolt` CLI; values are our own JSON blobs            | `sqlite3 state.db` and plain SQL                                                       | none (custom log format)                            |
-| Backups                   | copy the file at any time                        | hot backup through `tx.WriteTo`, which we must expose | `sqlite3 .backup`, `VACUUM INTO`, or **Litestream** continuous replication to S3/MinIO | copy the log                                        |
-| Expiry                    | our sweep loop                                   | our sweep loop                                        | `DELETE … WHERE expires_at < now` with an index                                        | built-in TTL                                        |
-| "Nearby" query            | our O(n) scan                                    | our O(n) scan                                         | bounding-box query on indexed lat/lon, then haversine                                  | built-in R-tree spatial index                       |
-| Schema changes            | change the struct; the JSON tolerates new fields | our encoding, our migrations                          | `PRAGMA user_version` migrations                                                       | our encoding                                        |
-| Code we own for storage   | ~80 lines, including the fsync/rename details    | ~100 lines of key and encoding glue                   | ~100 lines of SQL plus migrations                                                      | ~60 lines                                           |
-| Dependencies              | none                                             | `x/sys` only; needs Go ≥ 1.25                         | a large generated C→Go library (≈25 modules)                                           | ~10 small modules from one author                   |
-| Binary                    | 5.6 MB                                           | 5.8 MB                                                | **10.0 MB**                                                                            | 5.6 MB                                              |
-| Maturity / bus factor     | it's our code                                    | very high (etcd-io, CNCF)                             | engine: extreme; Go translation: mostly one maintainer, tracks every SQLite release    | one author, last release Sep 2024                   |
-| Two processes on one file | last writer wins (k8s `Recreate` prevents it)    | file lock: the second one waits                       | file lock + WAL: safe                                                                  | not safe                                            |
+- **Redis data types are the natural model for a queue.** A sorted set scored by ticket number gives the position directly (`ZRANK` + 1), and serving the head is `ZRANGE 0 0` + `ZREM`. There's almost no storage code of our own.
+- **SQLite underneath is the most proven storage engine there is.**
+  - Every change is a transaction with `synchronous=full`, so a crash (including power loss) loses nothing.
+  - The file opens with the standard `sqlite3` CLI.
+  - Backups are `.backup` or [Litestream](https://litestream.io).
+- **Low lock-in.** If Redka were ever abandoned, the data is still an ordinary SQLite file.
+- **Pure Go.** It cross-compiles with `CGO_ENABLED=0` to linux (amd64, arm64, arm/v7, riscv64), darwin (amd64, arm64), windows (amd64, arm64) and freebsd. CI runs the Go tests on amd64 and arm64.
 
-### Redis-like embedded stores
+### Data model
 
-These two keep the data model of the Node/Redis version: one sorted set per queue, scored by an incrementing ticket number, so `ZRANK` is the person's position. They are judged on their documented APIs, not on their internals.
+| Key               | Type       | Contents                                                                         |
+| ----------------- | ---------- | -------------------------------------------------------------------------------- |
+| `queue:<lat,lon>` | hash       | `password` (SHA-256), `message`, `seq` (last ticket number), `expires` (unix ms) |
+| `users:<lat,lon>` | sorted set | user id → ticket number                                                          |
 
-|                         | **E. NutsDB**                                                                  | **F. Redka (on `modernc.org/sqlite`)**                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| What it is              | pure-Go embedded store with Redis-like KV, lists, sets and sorted sets         | Redis data types (strings, hashes, sets, sorted sets…) stored in SQLite tables, usable as a Go library   |
-| Queue operations        | `ZAdd`, `ZRank` (**1-based**), `ZPopMin`, `ZRem`, `ZCard`, all in transactions | `ZAdd`, `ZRank` (0-based, like Redis), range, delete, length, all in transactions                        |
-| Expiry                  | TTL on KV entries; sorted-set entries need our sweep                           | per-key `EXPIRE`, just like Redis: one call expires a whole queue                                        |
-| "Nearby" query          | our O(n) scan                                                                  | our O(n) scan (no GEO commands)                                                                          |
-| Data lost on a crash    | none with the default `SyncEnable: true`                                       | none (it's SQLite)                                                                                       |
-| On-disk format          | its own append-only data files plus hint files                                 | a normal SQLite file                                                                                     |
-| Ongoing maintenance     | periodic **merge** (compaction) of data files, every 2 h by default            | none beyond SQLite's own                                                                                 |
-| Look at the data        | no external tool; only through the Go API                                      | `sqlite3` CLI (Redka's own table layout)                                                                 |
-| Backups                 | through its Go API                                                             | same as SQLite: `.backup`, `VACUUM INTO`, Litestream                                                     |
-| Code we own for storage | ~60 lines, plus our sweep                                                      | ~40 lines; the Node/Redis design maps one-to-one                                                         |
-| Binary (measured)       | 6.6 MB                                                                         | 10.4 MB                                                                                                  |
-| Maturity                | v1.1.0 (Nov 2025); established project                                         | v1.0.1 (Feb 2026); young, mostly one author, **but the data is plain SQLite**, which is the escape hatch |
+### Notes
 
-Rejected outright: **Badger** and **Pebble**. They are LSM trees with background compaction, many files and tuning knobs, built for write-heavy datasets far larger than ours. They would be harder to operate, the opposite of what we want.
-
-## Recommendation
-
-**F. Redka on `modernc.org/sqlite`**, if the goal is the most boring operations with the least code of our own:
-
-- **Storage is SQLite.** Durability, crash safety, `sqlite3` inspection and Litestream backups all work the same as option C below.
-- **The API is Redis's.** The queue logic maps one-to-one onto the original design (`ZADD` / `ZRANK` / `ZREM` / `ZPOPMIN`, plus `EXPIRE` per queue). That's less code than writing our own SQL, and no schema migrations.
-- **Low lock-in.** If Redka stopped being maintained, the data is still an ordinary SQLite file. We could read it with SQL and move to option C without losing anything.
-
-If you'd rather depend on as few layers as possible, choose **C. Plain SQLite** instead: same storage engine, but we write about 100 lines of SQL ourselves.
-
-**Why not E. NutsDB**, despite the nice API:
-
-- It's the only option besides BuntDB with its own on-disk format, and its periodic compaction is something to run and monitor.
-- There's no tooling outside the Go API, so you can't inspect or back up the data from a shell during an incident.
-- Those are exactly the "easy, rock-solid operations" criteria, so it loses to Redka even though NutsDB is pure Go and 4 MB smaller.
-
-### Plain SQLite (option C) in detail
-
-**C. SQLite via `modernc.org/sqlite`** is the most conservative choice:
-
-- Zero data loss on a crash, from the most-tested storage engine there is.
-- Anyone can open the file with the `sqlite3` CLI and run SQL. There is nothing project-specific to learn.
-- Backups are a solved problem:
-  - `sqlite3 state.db ".backup x"` for a one-off;
-  - [Litestream](https://litestream.io) as a sidecar for continuous replication to MinIO or S3. That fits a self-hosted k3s setup well, and it makes losing the PVC survivable.
-- Expiry and "nearby" become indexed queries instead of our own loops.
-- It stays pure Go: `CGO_ENABLED=0`, the `FROM scratch` image, and cross-compiling to arm64 all keep working.
-
-The costs:
-
-- +4.4 MB binary.
-- One large dependency tree that Dependabot needs to keep updated.
-- Schema migrations become a thing, though there are only two small tables.
-
-**Runner-up: B. bbolt.** Choose it if minimal dependencies matter more than tooling. It has the same zero-loss durability and an excellent track record, but inspection and backup tooling is weaker, and we'd still own the expiry and nearby logic.
-
-**Keep A** if a little over a second of possible loss on a hard crash is acceptable. Crash loss is the only real weakness at this data size; on a graceful shutdown nothing is lost. A also has the fewest moving parts.
-
-**Not D.** BuntDB fits the feature set best (TTL plus spatial index), but it has a single author, no tooling, and a niche file format, so it is the weakest on "rock solid".
-
-## If C is chosen
-
-```sql
-CREATE TABLE queues (
-  location      TEXT PRIMARY KEY,   -- "lat,lon", 4 decimals
-  lat REAL NOT NULL, lon REAL NOT NULL,
-  password_hash BLOB NOT NULL,
-  message       TEXT NOT NULL DEFAULT '',
-  expires_at    INTEGER NOT NULL    -- unix seconds
-);
-CREATE INDEX queues_expiry ON queues(expires_at);
-CREATE INDEX queues_lat_lon ON queues(lat, lon);
-
-CREATE TABLE users (
-  location TEXT NOT NULL REFERENCES queues ON DELETE CASCADE,
-  seq      INTEGER NOT NULL,        -- order in the queue
-  user_id  TEXT NOT NULL,
-  PRIMARY KEY (location, seq),
-  UNIQUE (location, user_id)
-);
-```
-
-- Open with `journal_mode=WAL`, `synchronous=FULL` and `busy_timeout`.
-- Each `Store` method becomes one transaction.
-- The mutex stays, but only to guard the subscriber map.
-- Position is `SELECT count(*) FROM users WHERE location=? AND seq <= (…)`.
-- `state.json` → `state.db`. The chart and Docker volume stay as they are.
-- On first start, if a `state.json` exists, import it once, then rename it to `state.json.imported`.
-
-## Decision and implementation notes
-
-The maintainer chose Redka. Their priorities were maintainability and easy operation over binary size, and relying on a proven embedded store rather than our own persistence code. It is implemented as follows:
-
-- **Cross-compiles with `CGO_ENABLED=0`** (checked) to linux/amd64, linux/arm64, linux/arm (v7), linux/riscv64, darwin/arm64, darwin/amd64, windows/amd64, windows/arm64 and freebsd/amd64. CI runs the Go tests on both amd64 and arm64 runners.
-- **Data model**, the same as the Node/Redis version:
-  - a `queue:<location>` hash holds the password hash, message, ticket counter and expiry;
-  - a `users:<location>` sorted set maps user id to ticket number, so rank + 1 is the position.
-- **Durability:** Redka's documented SQLite settings, but with `synchronous=full`. Every committed change survives a power loss.
-- **Expiry is our own:** an `expires` field per queue, plus a sweep every 10 s that deletes expired queues and tells their open pages. We don't use Redka's key TTL, because redka v1.0.1 treats a write to an already-expired key as a write to the expired key: the new data stays invisible. That made a queue re-created at the same spot vanish. `TestExpiry` covers this; worth reporting upstream.
-- The expiry is stored as a decimal string, because unix milliseconds overflow a 32-bit `int` on linux/arm.
-- `STATE_FILE` / `state.json` is replaced by `DB_FILE` / `queues.db`. Nothing needs migrating, because queues live at most 24 h.
+- **Expiry** is an `expires` field plus a sweep every 10 s, which deletes expired queues and wakes their open pages. We don't use Redka's key TTL: in redka v1.0.1, writing to a key after its TTL has passed keeps the old expiry, so a queue re-created at the same spot stayed invisible. `TestExpiry` guards this. Worth reporting upstream and revisiting.
+- `expires` is stored as a decimal string, because unix milliseconds overflow a 32-bit `int` on linux/arm.
+- "Nearby queues" is a scan over `queue:*` keys with a haversine distance. That's fine up to the 10,000-queue cap.
+- Pragmas are Redka's documented defaults (WAL, `foreign_keys=on`, `temp_store=memory`), except `synchronous=full`.

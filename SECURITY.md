@@ -1,15 +1,5 @@
 # Security Policy
 
-## Supported Versions
+Only the latest `main` (and the image and chart it publishes) is supported.
 
-Version 1.1 will be supported
-less than 1.1 is still in dev, and features > security until this project is useful
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.1.1   | :white_check_mark: |
-| < 1.1   | :x:                |
-
-## Reporting a Vulnerability
-
-Make an issue and tag @barakplasma
+Please report vulnerabilities privately through GitHub's [private vulnerability reporting](https://github.com/barakplasma/in-person-queue/security/advisories/new) rather than a public issue.
