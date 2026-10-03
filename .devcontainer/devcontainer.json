@@ -1,0 +1,21 @@
+{
+  "name": "in-person-queue",
+  "image": "mcr.microsoft.com/devcontainers/base:noble",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": {"version": "latest"},
+    "ghcr.io/devcontainers/features/node:1": {"version": "lts"}
+  },
+  // Node is only dev tooling: Playwright, Prettier and ESLint
+  "postCreateCommand": "go mod download && npm ci && npx playwright install --with-deps chromium",
+  "forwardPorts": [8080],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ms-playwright.playwright"
+      ]
+    }
+  }
+}
