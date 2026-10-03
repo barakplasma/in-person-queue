@@ -16,27 +16,20 @@ export function connect(namespace, options) {
   return io(`${backend}/${namespace}`, options);
 }
 
-/** @return {string} the plus code of the current queue, or '' if the link is invalid */
+/** @return {string} the "lat,lon" of the current queue, or '' if the link is invalid */
 export function getQueue() {
   const location = urlSearchParams.get('location') ?? '';
-  if (OpenLocationCode.isFull(location)) return location.toUpperCase();
-  try {
-    // v1 links base64-encoded the plus code
-    const decoded = atob(location);
-    if (OpenLocationCode.isFull(decoded)) return decoded.toUpperCase();
-  } catch {
-    // not base64 either
-  }
-  return '';
+  return /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(location) ? location : '';
 }
 
 export function displayLocation() {
-  const code = getQueue();
-  if (code) {
+  const location = getQueue();
+  if (location) {
+    const [lat, lon] = location.split(',');
     const a = document.querySelector('#location');
-    a.href = `https://plus.codes/${encodeURIComponent(code)}`;
+    a.href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`;
     a.target = '_blank';
-    a.textContent = code;
+    a.textContent = location;
   }
 }
 

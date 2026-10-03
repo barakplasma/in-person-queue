@@ -12,7 +12,7 @@ module.exports = [
     files: ['client/**/*.js'],
     languageOptions: {
       sourceType: 'module',
-      globals: {...globals.browser, OpenLocationCode: 'readonly'},
+      globals: globals.browser,
     },
   },
 ];

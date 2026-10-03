@@ -2,14 +2,12 @@ const queues = require('../queue/queue');
 const {Server} = require('socket.io');
 
 /**
- * Validates a plus code from a client and returns its redis key.
- * @param {unknown} plusCode
+ * Validates a "lat,lon" location from a client and returns its redis key.
+ * @param {unknown} location
  * @return {string}
  */
-function queueKey(plusCode) {
-  const code = String(plusCode).toUpperCase();
-  queues.decodePlusCode(code); // throws if invalid
-  return 'q:' + code;
+function queueKey(location) {
+  return 'q:' + queues.parseLocation(location).location; // throws if invalid
 }
 
 /**
@@ -54,41 +52,46 @@ module.exports.connection = function (server) {
   }
 
   io.on('connection', (socket) => {
-    on(socket, 'create-queue', async (plusCode, password, ack) => {
-      const created = await queues.createQueue(queueKey(plusCode), password);
-      ack(created ? {} : {error: 'A queue already exists at this location. Join it instead.'});
+    on(socket, 'create-queue', async (location, password, ack) => {
+      const queue = queueKey(location);
+      const created = await queues.createQueue(queue, password);
+      ack(
+        created
+          ? {location: queue.slice(2)}
+          : {error: 'A queue already exists at this location. Join it instead.'},
+      );
     });
 
-    on(socket, 'get-closest-queues', async (plusCode, ack) => {
-      ack(await queues.getClosestQueues(queueKey(plusCode).slice(2)));
+    on(socket, 'get-closest-queues', async (location, ack) => {
+      ack(await queues.getClosestQueues(location));
     });
   });
 
   rooms.on('connection', (socket) => {
-    on(socket, 'join-queue', (plusCode) => socket.join(queueKey(plusCode)));
+    on(socket, 'join-queue', (location) => socket.join(queueKey(location)));
 
-    on(socket, 'get-queue-length', async (plusCode, ack) => {
-      ack({queueLength: await queues.getQueueLength(queueKey(plusCode))});
+    on(socket, 'get-queue-length', async (location, ack) => {
+      ack({queueLength: await queues.getQueueLength(queueKey(location))});
     });
 
-    on(socket, 'get-admin-message', async (plusCode, ack) => {
-      const {adminMessage} = await queues.getQueueMetadata(queueKey(plusCode));
+    on(socket, 'get-admin-message', async (location, ack) => {
+      const {adminMessage} = await queues.getQueueMetadata(queueKey(location));
       ack({adminMessage});
     });
 
-    on(socket, 'get-my-position', async (plusCode, userId, ack) => {
-      ack({currentPosition: await queues.getPosition(queueKey(plusCode), String(userId))});
+    on(socket, 'get-my-position', async (location, userId, ack) => {
+      ack({currentPosition: await queues.getPosition(queueKey(location), String(userId))});
     });
 
-    on(socket, 'add-user', async (plusCode, userId, ack) => {
-      const queue = queueKey(plusCode);
+    on(socket, 'add-user', async (location, userId, ack) => {
+      const queue = queueKey(location);
       await queues.addUserToQueue(queue, String(userId).slice(0, 32));
       ack({});
       await broadcast(queue);
     });
 
-    on(socket, 'user-done', async (plusCode, userId, ack) => {
-      const queue = queueKey(plusCode);
+    on(socket, 'user-done', async (location, userId, ack) => {
+      const queue = queueKey(location);
       await queues.removeUserFromQueue(queue, String(userId));
       ack({});
       await broadcast(queue);
@@ -106,7 +109,7 @@ module.exports.connection = function (server) {
         return next();
       }
     } catch {
-      // invalid plus code: fall through to unauthorized
+      // invalid location: fall through to unauthorized
     }
     next(new Error('not authorized'));
   });

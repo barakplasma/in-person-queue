@@ -1,5 +1,4 @@
 const {Redis} = require('ioredis');
-const OpenLocationCode = require('../client/vendor/openlocationcode');
 
 const redis = new Redis(process.env.REDIS_CONNECTION_STRING);
 
@@ -40,15 +39,23 @@ redis.defineCommand('createQueue', {
   `,
 });
 
+const LOCATION = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/;
+// 4 decimals is ~11m: people creating a queue at the same spot share it
+const round = (n) => (Math.round(n * 1e4) / 1e4).toFixed(4);
+
 /**
- * @param {string} plusCode
- * @return {{latitudeCenter: number, longitudeCenter: number}}
+ * Parses "lat,lon" into rounded coordinates and the canonical queue location.
+ * @param {string} location
+ * @return {{lat: number, lon: number, location: string}}
  */
-function decodePlusCode(plusCode) {
-  if (!OpenLocationCode.isFull(plusCode)) {
-    throw new Error('invalid plus code: ' + plusCode);
+function parseLocation(location) {
+  const match = LOCATION.exec(String(location));
+  // redis geo indexes only cover latitudes within ±85.05112878
+  if (!match || Math.abs(match[1]) > 85.05112878 || Math.abs(match[2]) > 180) {
+    throw new Error('invalid location: ' + location);
   }
-  return OpenLocationCode.decode(plusCode);
+  const [lat, lon] = [round(match[1]), round(match[2])];
+  return {lat: Number(lat), lon: Number(lon), location: `${lat},${lon}`};
 }
 
 async function addUserToQueue(queue, userId) {
@@ -76,15 +83,15 @@ async function createQueue(queue, password) {
   if (!password) {
     throw new Error('password required');
   }
-  const {latitudeCenter, longitudeCenter} = decodePlusCode(queue.slice(2));
+  const {lat, lon} = parseLocation(queue.slice(2));
   const created = await redis.createQueue(
     queue,
     meta(queue),
     'queues',
     password,
     QUEUE_TTL_SECONDS,
-    longitudeCenter,
-    latitudeCenter,
+    lon,
+    lat,
   );
   if (!created) {
     return false;
@@ -97,13 +104,13 @@ async function getPosition(queue, userId) {
   return await redis.zrank(queue, userId);
 }
 
-async function getClosestQueues(plusCode) {
-  const {latitudeCenter, longitudeCenter} = decodePlusCode(plusCode);
+async function getClosestQueues(location) {
+  const {lat, lon} = parseLocation(location);
   const closest = await redis.geosearch(
     'queues',
     'FROMLONLAT',
-    longitudeCenter,
-    latitudeCenter,
+    lon,
+    lat,
     'BYRADIUS',
     100000,
     'm',
@@ -148,7 +155,7 @@ async function updateAdminMessage(queue, adminMessage) {
 }
 
 module.exports = {
-  decodePlusCode,
+  parseLocation,
   addUserToQueue,
   removeUserFromQueue,
   createQueue,

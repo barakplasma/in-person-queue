@@ -41,7 +41,7 @@ Build a single Go binary that serves the static client (via `embed`) and a small
 
 ```go
 type Queue struct {
-    Code         string    // plus code, e.g. "8G4P3QJJ+22"
+    Location     string    // "lat,lon" rounded to 4 decimals (~11m), e.g. "32.0800,34.7800"
     PasswordHash [32]byte  // sha256 of the admin password; the plaintext is never stored
     Message      string
     Users        []string  // index 0 = head of queue
@@ -67,21 +67,21 @@ type Store struct {
 
 ### 3. Dependencies
 
-- Standard library, plus one module: Google's official `github.com/google/open-location-code/go`, used to validate and decode plus codes.
-- If we want zero dependencies, we can instead port the ~100 lines of decode/validate.
+- Standard library only: zero third-party Go modules.
+- Locations are plain `lat,lon` strings: `strconv.ParseFloat`, a range check, and rounding to 4 decimals. That's the same rule as the Node version, so links stay compatible.
 
 ### 4. HTTP API (Go 1.22+ `ServeMux` patterns, no router library)
 
-| Method & path                             | Who    | Purpose                                                                  |
-| ----------------------------------------- | ------ | ------------------------------------------------------------------------ |
-| `GET /api/queues?near=<code>`             | anyone | five nearest live queues within 100 km                                   |
-| `POST /api/queues` `{code}`               | anyone | create a queue; returns `{password}`, or 409 if one already exists there |
-| `POST /api/queues/{code}/users`           | anyone | join; **the server generates** the `userId` and returns it               |
-| `DELETE /api/queues/{code}/users/{id}`    | user   | leave                                                                    |
-| `GET /api/queues/{code}/events?user=<id>` | anyone | SSE stream: `{length, message, position}` on every change                |
-| `POST /api/queues/{code}/next`            | admin  | serve the head of the queue                                              |
-| `PUT /api/queues/{code}/message`          | admin  | set the admin message                                                    |
-| `GET /healthz`                            | k8s    | liveness/readiness                                                       |
+| Method & path                                 | Who    | Purpose                                                                  |
+| --------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| `GET /api/queues?near=<lat,lon>`              | anyone | five nearest live queues within 100 km                                   |
+| `POST /api/queues` `{location}`               | anyone | create a queue; returns `{password}`, or 409 if one already exists there |
+| `POST /api/queues/{location}/users`           | anyone | join; **the server generates** the `userId` and returns it               |
+| `DELETE /api/queues/{location}/users/{id}`    | user   | leave                                                                    |
+| `GET /api/queues/{location}/events?user=<id>` | anyone | SSE stream: `{length, message, position}` on every change                |
+| `POST /api/queues/{location}/next`            | admin  | serve the head of the queue                                              |
+| `PUT /api/queues/{location}/message`          | admin  | set the admin message                                                    |
+| `GET /healthz`                                | k8s    | liveness/readiness                                                       |
 
 - Admin calls send `Authorization: Bearer <password>`, which is checked with `subtle.ConstantTimeCompare` against the stored hash.
 - The SSE stream is personalised: with `?user=`, each event carries that user's position, so the client never asks for it separately.
@@ -93,21 +93,21 @@ sequenceDiagram
   participant S as Go server (in-memory store)
   participant F as state.json
   participant U as User page
-  A->>S: POST /api/queues {code}
+  A->>S: POST /api/queues {location}
   S-->>A: 201 {password}
-  U->>S: GET /api/queues/{code}/events?user= (EventSource)
-  U->>S: POST /api/queues/{code}/users
+  U->>S: GET /api/queues/{location}/events?user= (EventSource)
+  U->>S: POST /api/queues/{location}/users
   S-->>U: 201 {userId}
   S-->>U: event: {length: 2, position: 2}
   S-->>A: event: {length: 2, head: "Start Queue"}
-  A->>S: POST /api/queues/{code}/next (Bearer)
+  A->>S: POST /api/queues/{location}/next (Bearer)
   S-->>U: event: {length: 1, position: 1}
   S--)F: snapshot (≤1s later, temp file + rename)
 ```
 
 ### 5. Client
 
-- Keep the three HTML pages, mvp.css and the vendored Open Location Code library.
+- Keep the three HTML pages and mvp.css.
 - Replace the Socket.io calls with `fetch` and `EventSource`.
 - Delete the Socket.io client and `request()` helper; the client gets about 30% smaller.
 
@@ -133,7 +133,7 @@ sequenceDiagram
 2. Rewrite the client for SSE/fetch.
 3. Run the **existing Playwright e2e suite** against the Go server. The selectors don't change, so the suite is the acceptance test. Port the `node:test` unit tests to `go test` against `Store`, plus `httptest` for the API.
 4. Delete the Node server, `package.json` runtime deps, Redis/Valkey from compose and CI. Keep Node only as a dev dependency for Playwright.
-5. Cut over. No data migration: queues live at most 24 hours. Old v1/v2 links keep working because the URL shape (`queue.html?location=<code>`) is unchanged.
+5. Cut over. No data migration: queues live at most 24 hours. Existing links keep working because the URL shape (`queue.html?location=<lat,lon>`) is unchanged.
 
 ## Consequences
 

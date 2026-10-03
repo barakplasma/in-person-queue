@@ -39,7 +39,7 @@ An intended use case of this project is to enable medical professionals, or the 
 ## User Guide
 
 [Implemented: Create queue] Navigate to an instance of In-Person-Queue, such as https://barakplasma.github.io/in-person-queue/client/ and click on "Create queue at my location". By creating a queue, you gain access to administer that queue.
-This prompts the browser to ask permission to do a geolocation check. This geolocation is used to generate an OpenLocationCode, which is used as the name of the queue. Only the queue admin must provide geolocation access.
+This prompts the browser to ask permission to do a geolocation check. The queue is named after that location as `lat,lon`, rounded to 4 decimals (about 11 meters), so a second admin at the same spot joins the existing queue instead of creating a duplicate. Only the queue admin must provide geolocation access.
 
 [Implemented: ADMIN URL]
 Anyone with the admin URL can act as an admin. The admin URL for a queue is a secret for controlling the queue.
@@ -123,7 +123,7 @@ Queues expire 24 hours after they are created.
 
 Vanilla HTML/JavaScript/CSS front-end (no build step, no framework), and a Node.js `http` + Socket.io backend with a Redis/Valkey datastore. Its only runtime dependencies are `socket.io` and `ioredis`.
 
-A queue is named after the [plus code](https://maps.google.com/pluscodes/) of where the admin created it. Each queue is a sorted set (`q:<plus code>`), its password and admin message live in a hash (`qm:q:<plus code>`), and a geo index (`queues`) powers "nearby queues". The server pushes a `refresh-queue` event to everyone watching a queue whenever it changes.
+A queue is named after where the admin created it, as `lat,lon` rounded to 4 decimals (e.g. `32.0800,34.7800`). Each queue is a sorted set (`q:<lat,lon>`), its password and admin message live in a hash (`qm:q:<lat,lon>`), and a geo index (`queues`) powers "nearby queues". The server pushes a `refresh-queue` event to everyone watching a queue whenever it changes.
 
 ```mermaid
 sequenceDiagram
@@ -131,10 +131,10 @@ sequenceDiagram
   participant S as Server
   participant R as Redis / Valkey
   participant U as User page
-  A->>S: create-queue(plusCode, password)
+  A->>S: create-queue(lat,lon, password)
   S->>R: HSETNX password, ZADD "Start Queue", GEOADD
-  U->>S: /room join-queue(plusCode)
-  U->>S: add-user(plusCode, userId)
+  U->>S: /room join-queue(lat,lon)
+  U->>S: add-user(lat,lon, userId)
   S->>R: addToEndOfQueue (Lua, atomic)
   S-->>U: refresh-queue {queueLength, adminMessage}
   S-->>A: refresh-queue

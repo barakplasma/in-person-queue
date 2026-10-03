@@ -2,7 +2,8 @@ const {describe, it, beforeEach, after} = require('node:test');
 const assert = require('node:assert/strict');
 const queue = require('../queue/queue');
 
-const testQueueId = 'q:8F2C4M6J+9V';
+const testLocation = '32.0800,34.7800';
+const testQueueId = 'q:' + testLocation;
 const password = 'test-password';
 const redis = queue._redis;
 
@@ -38,29 +39,48 @@ describe('Queue', () => {
       assert.equal(await redis.zcard('queues'), 1);
     });
 
-    it('rejects invalid plus codes and missing passwords', async () => {
+    it('rejects invalid locations and missing passwords', async () => {
       await assert.rejects(queue.createQueue('q:<script>', password));
       await assert.rejects(queue.createQueue(testQueueId, ''));
     });
   });
 
   describe('getClosestQueues', () => {
-    it('finds a nearby queue', async () => {
+    it('finds a queue ~100m away', async () => {
       await create();
-      assert.deepEqual(await queue.getClosestQueues('8F2C4M6J+9V'), [
-        {queue: '8F2C4M6J+9V', distance: '0.2295'},
-      ]);
+      const [nearest, ...rest] = await queue.getClosestQueues('32.0809,34.7800');
+      assert.equal(nearest.queue, testLocation);
+      assert.ok(Math.abs(Number(nearest.distance) - 100) < 2, nearest.distance);
+      assert.deepEqual(rest, []);
     });
 
     it('drops expired queues from the geo index', async () => {
       await create();
       await redis.del('qm:' + testQueueId);
-      assert.deepEqual(await queue.getClosestQueues('8F2C4M6J+9V'), []);
+      assert.deepEqual(await queue.getClosestQueues(testLocation), []);
       assert.equal(await redis.zcard('queues'), 0);
     });
 
-    it('rejects invalid plus codes', async () => {
+    it('rejects invalid locations', async () => {
       await assert.rejects(queue.getClosestQueues('nope'));
+    });
+  });
+
+  describe('parseLocation', () => {
+    it('rounds to ~11m and canonicalizes', () => {
+      assert.deepEqual(queue.parseLocation(' 32.08004 , 34.78 '), {
+        lat: 32.08,
+        lon: 34.78,
+        location: '32.0800,34.7800',
+      });
+      assert.equal(queue.parseLocation('-0.00001,-0.00001').location, '0.0000,0.0000');
+      assert.equal(queue.parseLocation('-33.9,151').location, '-33.9000,151.0000');
+    });
+
+    it('rejects garbage and out-of-range coordinates', () => {
+      for (const bad of ['', ',', '1', '1,2,3', 'a,b', '90,0', '0,181', '1e3,0', '<b>,1', null]) {
+        assert.throws(() => queue.parseLocation(bad), /invalid location/, String(bad));
+      }
     });
   });
 

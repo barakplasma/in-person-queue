@@ -13,20 +13,20 @@ async function createQueue(page) {
   await page.click('#becomeAdmin');
   await page.waitForURL(/admin\.html/);
   const url = new URL(page.url());
-  return {plusCode: url.searchParams.get('location'), password: url.searchParams.get('password')};
+  return {location: url.searchParams.get('location'), password: url.searchParams.get('password')};
 }
 
-async function joinQueue(page, plusCode) {
-  await page.goto(`/queue.html?${new URLSearchParams({location: plusCode})}`);
+async function joinQueue(page, location) {
+  await page.goto(`/queue.html?${new URLSearchParams({location: location})}`);
   await page.click('#join-queue');
   await page.waitForURL(/userId=/);
 }
 
 test('home page lists the nearby queue', async ({page, context}) => {
-  const {plusCode} = await createQueue(page);
+  const {location} = await createQueue(page);
   const home = await context.newPage();
   await home.goto('/');
-  await expect(home.locator('#queues a')).toHaveText([plusCode]);
+  await expect(home.locator('#queues a')).toHaveText([location]);
   await expect(home.locator('header a')).toHaveAttribute(
     'href',
     'https://barakplasma.github.io/in-person-queue/',
@@ -34,13 +34,13 @@ test('home page lists the nearby queue', async ({page, context}) => {
 });
 
 test('user can join and leave a queue', async ({page, context}) => {
-  const {plusCode} = await createQueue(page);
+  const {location} = await createQueue(page);
   const user = await context.newPage();
-  await user.goto(`/queue.html?${new URLSearchParams({location: plusCode})}`);
+  await user.goto(`/queue.html?${new URLSearchParams({location: location})}`);
   await expect(user.locator('#queueLengthCount')).toHaveText('1');
   await expect(user.locator('#userId')).toHaveText('N/A');
   await expect(user.locator('#position-in-queue')).toHaveText('Not yet in queue');
-  await expect(user.locator('#location')).toHaveText(plusCode);
+  await expect(user.locator('#location')).toHaveText(location);
 
   await user.click('#join-queue');
   await user.waitForURL(/userId=[A-Z0-9]{6}/);
@@ -55,14 +55,14 @@ test('user can join and leave a queue', async ({page, context}) => {
 });
 
 test('admin sees and serves the queue live', async ({page, context}) => {
-  const {plusCode} = await createQueue(page);
+  const {location} = await createQueue(page);
   await expect(page.locator('#userId')).toHaveText('Start Queue');
   await expect(page.locator('#queueLengthCount')).toHaveText('1');
-  await expect(page.locator('#location')).toHaveText(plusCode);
+  await expect(page.locator('#location')).toHaveText(location);
 
   const user = await context.newPage();
   await user.goto(await page.locator('#shareLink a').getAttribute('href'));
-  await expect(user.locator('#location')).toHaveText(plusCode);
+  await expect(user.locator('#location')).toHaveText(location);
 
   const message = `hello ${Date.now()}`;
   await page.fill('#admin-message', message);
@@ -83,11 +83,11 @@ test('admin sees and serves the queue live', async ({page, context}) => {
 });
 
 test('positions update for everyone when someone leaves', async ({page, context}) => {
-  const {plusCode} = await createQueue(page);
+  const {location} = await createQueue(page);
   const user1 = await context.newPage();
   const user2 = await context.newPage();
-  await joinQueue(user1, plusCode);
-  await joinQueue(user2, plusCode);
+  await joinQueue(user1, location);
+  await joinQueue(user2, location);
   await expect(user1.locator('#position-in-queue')).toHaveText('2');
   await expect(user2.locator('#position-in-queue')).toHaveText('3');
   await expect(user1.locator('#queueLengthCount')).toHaveText('3');
@@ -98,20 +98,20 @@ test('positions update for everyone when someone leaves', async ({page, context}
 });
 
 test('admin page rejects a wrong password', async ({page, context}) => {
-  const {plusCode} = await createQueue(page);
+  const {location} = await createQueue(page);
   const attacker = await context.newPage();
   await attacker.goto(
-    `/admin.html?${new URLSearchParams({location: plusCode, password: 'wrong'})}`,
+    `/admin.html?${new URLSearchParams({location: location, password: 'wrong'})}`,
   );
   await expect(attacker.locator('#userId')).toHaveText(/Not authorized/);
   await expect(page.locator('#userId')).toHaveText('Start Queue');
 });
 
 test('user-controlled text is not rendered as HTML', async ({page, context}) => {
-  const {plusCode} = await createQueue(page);
+  const {location} = await createQueue(page);
   const user = await context.newPage();
   const evil = '<img src=x onerror="window.pwned=1">';
-  await user.goto(`/queue.html?${new URLSearchParams({location: plusCode, userId: evil})}`);
+  await user.goto(`/queue.html?${new URLSearchParams({location: location, userId: evil})}`);
   await expect(user.locator('#userId')).toHaveText(evil);
   expect(await user.evaluate(() => globalThis.pwned)).toBeUndefined();
 });
@@ -120,18 +120,24 @@ test('malformed socket input does not crash the server', async ({page, request})
   await page.goto('/');
   const reply = await page.evaluate(async () => {
     const {io} = await import('/socket.io/socket.io.esm.min.js');
-    return io('/').timeout(5000).emitWithAck('get-closest-queues', 'not a plus code');
+    return io('/').timeout(5000).emitWithAck('get-closest-queues', 'not a location');
   });
-  expect(reply.error).toMatch(/invalid plus code/);
+  expect(reply.error).toMatch(/invalid location/);
   expect((await request.get('/healthcheck')).ok()).toBeTruthy();
 });
 
-test('v1 base64 links still open the queue', async ({page, context}) => {
-  const {plusCode} = await createQueue(page);
-  const user = await context.newPage();
-  await user.goto(`/queue.html?${new URLSearchParams({location: btoa(plusCode)})}`);
-  await expect(user.locator('#location')).toHaveText(plusCode);
-  await expect(user.locator('#queueLengthCount')).toHaveText('1');
+test('location links to OpenStreetMap, rounded to ~11m', async ({page}) => {
+  const {latitude, longitude} = randomLocation();
+  await page.context().setGeolocation({latitude, longitude});
+  await page.goto('/');
+  await page.click('#becomeAdmin');
+  await page.waitForURL(/admin\.html/);
+  const [lat, lon] = [latitude.toFixed(4), longitude.toFixed(4)];
+  await expect(page.locator('#location')).toHaveText(`${lat},${lon}`);
+  await expect(page.locator('#location')).toHaveAttribute(
+    'href',
+    `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`,
+  );
 });
 
 test('invalid queue links go back to the home page', async ({page}) => {

@@ -2,14 +2,14 @@ import {connect, request, setText} from './sharedClientUtils.js';
 
 const homeSocket = connect('');
 
-/** @return {Promise<string>} plus code of the current location */
-function getPlusCode() {
+/** @return {Promise<string>} "lat,lon" of the current location */
+function getLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       return reject(Error('Geolocation is not supported by your browser'));
     }
     navigator.geolocation.getCurrentPosition(
-      ({coords}) => resolve(OpenLocationCode.encode(coords.latitude, coords.longitude)),
+      ({coords}) => resolve(`${coords.latitude},${coords.longitude}`),
       () => {
         setText('#warning', 'Unable to retrieve your location');
         reject(Error('Unable to retrieve your location'));
@@ -23,7 +23,7 @@ function gotoPage(pageName, params) {
 }
 
 async function showNearbyQueues() {
-  const queues = await request(homeSocket, 'get-closest-queues', await getPlusCode());
+  const queues = await request(homeSocket, 'get-closest-queues', await getLocation());
   const tbody = document.querySelector('#queues tbody');
   if (!queues.length) {
     const cell = tbody.insertRow().insertCell();
@@ -41,11 +41,15 @@ async function showNearbyQueues() {
 }
 
 async function createQueue() {
-  const plusCode = await getPlusCode();
   const password = crypto.randomUUID();
-  const {error} = await request(homeSocket, 'create-queue', plusCode, password);
+  const {error, location} = await request(
+    homeSocket,
+    'create-queue',
+    await getLocation(),
+    password,
+  );
   if (error) return alert(error);
-  gotoPage('admin', {location: plusCode, password});
+  gotoPage('admin', {location, password});
 }
 
 showNearbyQueues().catch(console.error);
