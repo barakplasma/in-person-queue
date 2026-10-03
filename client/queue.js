@@ -13,6 +13,8 @@ import {
 const roomSocket = connect('room');
 const queue = getQueue();
 const userId = urlSearchParams.get('userId');
+if (!queue) goHome();
+let lastPosition;
 
 // (re)join the room on every (re)connect; rooms don't survive reconnects
 roomSocket.on('connect', () => roomSocket.emit('join-queue', queue));
@@ -20,8 +22,7 @@ roomSocket.on('connect', () => roomSocket.emit('join-queue', queue));
 roomSocket.on('refresh-queue', ({queueLength, adminMessage}) => {
   setText('#queueLengthCount', queueLength);
   setText('#admin-message', adminMessage);
-  refreshPosition();
-  vibrate();
+  refreshPosition().catch(console.error);
 });
 
 async function refreshPosition() {
@@ -29,6 +30,8 @@ async function refreshPosition() {
   const {currentPosition} = await request(roomSocket, 'get-my-position', queue, userId);
   const display = currentPosition === null ? 'Not in queue' : currentPosition + 1;
   setText('#position-in-queue', display);
+  if (lastPosition !== undefined && lastPosition !== display) vibrate();
+  lastPosition = display;
   document.title = `Queue: ${display} - ${userId}`;
 }
 

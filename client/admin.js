@@ -9,6 +9,7 @@ import {
 } from './sharedClientUtils.js';
 
 const queue = getQueue();
+if (!queue) location.href = './';
 const adminSocket = connect('admin', {
   auth: {queue, password: urlSearchParams.get('password')},
 });
@@ -17,12 +18,12 @@ const roomSocket = connect('room');
 adminSocket.on('connect_error', (error) => {
   setText('#userId', `Not authorized for this queue (${error.message})`);
 });
-adminSocket.on('connect', refreshHeadOfQueue);
+adminSocket.on('connect', () => refreshHeadOfQueue().catch(console.error));
 
 roomSocket.on('connect', () => roomSocket.emit('join-queue', queue));
 roomSocket.on('refresh-queue', ({queueLength}) => {
   setText('#queueLengthCount', queueLength);
-  refreshHeadOfQueue();
+  refreshHeadOfQueue().catch(console.error);
   vibrate();
 });
 
@@ -45,7 +46,8 @@ async function refresh() {
 
 async function updateAdminMessage() {
   const text = document.querySelector('#admin-message').value;
-  await request(adminSocket, 'update-admin-message', text);
+  const {error} = await request(adminSocket, 'update-admin-message', text);
+  if (error) alert(error);
 }
 
 async function currentUserDone() {

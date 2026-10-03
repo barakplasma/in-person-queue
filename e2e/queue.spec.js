@@ -125,3 +125,16 @@ test('malformed socket input does not crash the server', async ({page, request})
   expect(reply.error).toMatch(/invalid plus code/);
   expect((await request.get('/healthcheck')).ok()).toBeTruthy();
 });
+
+test('v1 base64 links still open the queue', async ({page, context}) => {
+  const {plusCode} = await createQueue(page);
+  const user = await context.newPage();
+  await user.goto(`/queue.html?${new URLSearchParams({location: btoa(plusCode)})}`);
+  await expect(user.locator('#location')).toHaveText(plusCode);
+  await expect(user.locator('#queueLengthCount')).toHaveText('1');
+});
+
+test('invalid queue links go back to the home page', async ({page}) => {
+  await page.goto('/queue.html?location=nonsense');
+  await page.waitForURL(/\/$/);
+});

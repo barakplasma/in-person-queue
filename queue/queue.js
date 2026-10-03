@@ -19,8 +19,24 @@ redis.defineCommand('addToEndOfQueue', {
     local last = redis.call('zrevrange', KEYS[1], 0, 0, 'WITHSCORES')
     local score = (tonumber(last[2]) or 0) + 1
     redis.call('zadd', KEYS[1], score, ARGV[1])
-    redis.call('pexpire', KEYS[1], redis.call('pttl', KEYS[2]))
+    local ttl = redis.call('pttl', KEYS[2])
+    -- queues created before TTLs existed return -1, and pexpire(-1) would delete the queue
+    if ttl > 0 then redis.call('pexpire', KEYS[1], ttl) end
     return score
+  `,
+});
+
+// Creates a queue atomically: a crash can't leave a password without a queue or TTL.
+// Returns 0 if a queue already exists at that location.
+redis.defineCommand('createQueue', {
+  numberOfKeys: 3,
+  lua: `
+    if redis.call('hsetnx', KEYS[2], 'password', ARGV[1]) == 0 then return 0 end
+    redis.call('expire', KEYS[2], ARGV[2])
+    redis.call('zadd', KEYS[1], 1, 'Start Queue')
+    redis.call('expire', KEYS[1], ARGV[2])
+    redis.call('geoadd', KEYS[3], ARGV[3], ARGV[4], KEYS[1])
+    return 1
   `,
 });
 
@@ -38,7 +54,7 @@ function decodePlusCode(plusCode) {
 async function addUserToQueue(queue, userId) {
   const score = await redis.addToEndOfQueue(queue, meta(queue), userId);
   if (score === -1) {
-    throw new Error('queue does not exist: ' + queue);
+    throw new Error('This queue has closed or does not exist.');
   }
   const log =
     score === 0
@@ -61,17 +77,18 @@ async function createQueue(queue, password) {
     throw new Error('password required');
   }
   const {latitudeCenter, longitudeCenter} = decodePlusCode(queue.slice(2));
-  const created = await redis.hsetnx(meta(queue), 'password', password);
+  const created = await redis.createQueue(
+    queue,
+    meta(queue),
+    'queues',
+    password,
+    QUEUE_TTL_SECONDS,
+    longitudeCenter,
+    latitudeCenter,
+  );
   if (!created) {
     return false;
   }
-  await redis
-    .multi()
-    .expire(meta(queue), QUEUE_TTL_SECONDS)
-    .zadd(queue, 1, 'Start Queue')
-    .expire(queue, QUEUE_TTL_SECONDS)
-    .geoadd('queues', longitudeCenter, latitudeCenter, queue)
-    .exec();
   console.log({EventName: 'created queue', queue});
   return true;
 }

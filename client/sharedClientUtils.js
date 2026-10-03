@@ -16,14 +16,23 @@ export function connect(namespace, options) {
   return io(`${backend}/${namespace}`, options);
 }
 
-/** @return {string} the plus code of the current queue */
+/** @return {string} the plus code of the current queue, or '' if the link is invalid */
 export function getQueue() {
-  return urlSearchParams.get('location') ?? '';
+  const location = urlSearchParams.get('location') ?? '';
+  if (OpenLocationCode.isFull(location)) return location.toUpperCase();
+  try {
+    // v1 links base64-encoded the plus code
+    const decoded = atob(location);
+    if (OpenLocationCode.isFull(decoded)) return decoded.toUpperCase();
+  } catch {
+    // not base64 either
+  }
+  return '';
 }
 
 export function displayLocation() {
   const code = getQueue();
-  if (OpenLocationCode.isValid(code)) {
+  if (code) {
     const a = document.querySelector('#location');
     a.href = `https://plus.codes/${encodeURIComponent(code)}`;
     a.target = '_blank';

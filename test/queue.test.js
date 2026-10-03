@@ -32,6 +32,12 @@ describe('Queue', () => {
       assert.equal(await queue.checkAuthForQueue({queue: testQueueId, password}), true);
     });
 
+    it('creates the metadata and the queue together', async () => {
+      await create();
+      assert.ok((await redis.ttl('qm:' + testQueueId)) > 0);
+      assert.equal(await redis.zcard('queues'), 1);
+    });
+
     it('rejects invalid plus codes and missing passwords', async () => {
       await assert.rejects(queue.createQueue('q:<script>', password));
       await assert.rejects(queue.createQueue(testQueueId, ''));
@@ -93,6 +99,13 @@ describe('Queue', () => {
     it('refuses to add users to a queue that does not exist', async () => {
       await assert.rejects(queue.addUserToQueue(testQueueId, 'b'));
       assert.equal(await queue.getQueueLength(testQueueId), 0);
+    });
+
+    it('keeps users added to a legacy queue without a TTL', async () => {
+      await redis.hset('qm:' + testQueueId, 'password', password);
+      await redis.zadd(testQueueId, 1, 'Start Queue');
+      await addUsers('b');
+      assert.equal(await queue.getPosition(testQueueId, 'b'), 1);
     });
 
     it('still accepts users after the queue was emptied', async () => {

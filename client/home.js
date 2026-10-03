@@ -25,6 +25,11 @@ function gotoPage(pageName, params) {
 async function showNearbyQueues() {
   const queues = await request(homeSocket, 'get-closest-queues', await getPlusCode());
   const tbody = document.querySelector('#queues tbody');
+  if (!queues.length) {
+    const cell = tbody.insertRow().insertCell();
+    cell.colSpan = 2;
+    cell.textContent = 'No queues nearby yet';
+  }
   for (const {queue, distance} of queues) {
     const row = tbody.insertRow();
     const a = document.createElement('a');
