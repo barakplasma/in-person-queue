@@ -41,7 +41,10 @@ func newHandler(s *Store, static fs.FS) http.Handler {
 	})
 
 	mux.HandleFunc("POST /api/queues", func(w http.ResponseWriter, r *http.Request) {
-		var body struct{ Location string }
+		var body struct {
+			Location string
+			Closes   time.Time // RFC 3339; omitted: the default
+		}
 		if err := readJSON(w, r, &body); err != nil {
 			writeError(w, err)
 			return
@@ -49,7 +52,7 @@ func newHandler(s *Store, static fs.FS) http.Handler {
 		_, _, location, err := parseLocation(body.Location)
 		if err == nil {
 			var password string
-			if password, err = s.Create(location); err == nil {
+			if password, err = s.Create(location, body.Closes); err == nil {
 				slog.Info("created queue", "queue", location)
 				writeJSON(w, http.StatusCreated, map[string]string{"location": location, "password": password})
 				return
@@ -196,7 +199,7 @@ func writeResult(w http.ResponseWriter, err error) {
 func writeError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
-	case errors.Is(err, errInvalidLocation), errors.Is(err, errBadRequest):
+	case errors.Is(err, errInvalidLocation), errors.Is(err, errBadRequest), errors.Is(err, errInvalidCloses):
 		status = http.StatusBadRequest
 	case errors.Is(err, errUnauthorized):
 		status = http.StatusUnauthorized

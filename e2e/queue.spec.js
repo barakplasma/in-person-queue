@@ -163,6 +163,58 @@ for (const [phone, userAgent, href] of [
   });
 }
 
+test('admin picks when the queue closes', async ({page}) => {
+  await page.context().setGeolocation(randomLocation());
+  await page.goto('/');
+  // defaults to 24 hours from now
+  const value = await page.inputValue('#closes');
+  expect(Math.abs(new Date(value) - Date.now() - 24 * 3600_000)).toBeLessThan(120_000);
+  const inThreeDays = new Date(Date.now() + 3 * 24 * 3600_000);
+  inThreeDays.setHours(9, 30, 0, 0);
+  const local = new Date(inThreeDays - inThreeDays.getTimezoneOffset() * 60_000);
+  await page.fill('#closes', local.toISOString().slice(0, 16));
+  await page.click('#becomeAdmin');
+  await page.waitForURL(/admin\.html/);
+  await expect(page.locator('#closes')).toHaveText(
+    inThreeDays.toLocaleString([], {dateStyle: 'medium', timeStyle: 'short'}),
+  );
+});
+
+test('display mode shows the line without the admin password', async ({page, context}) => {
+  const {location} = await createQueue(page);
+  const display = await context.newPage();
+  await display.goto(`/display.html?${new URLSearchParams({location, top: '2'})}`);
+  await expect(display.locator('#serving')).toHaveText('Starting soon');
+  await expect(display.locator('#wait')).toHaveText('estimating…');
+
+  for (let i = 0; i < 3; i++) await joinQueue(await context.newPage(), location);
+  await page.fill('#admin-message', 'Bring your ID');
+  await page.click('#submit-admin-message');
+  await expect(display.locator('#display-message')).toHaveText('Bring your ID');
+  await expect(display.locator('#next tbody td:first-child')).toHaveText(['A001', 'A002']); // top 2
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.click('#current-user-done'); // start the queue
+  await expect(display.locator('#serving')).toHaveText('A001');
+  await page.click('#current-user-done'); // serve A001: the first measured service time
+  await expect(display.locator('#serving')).toHaveText('A002');
+  await expect(display.locator('#wait')).toHaveText('under a minute');
+  await expect(display.locator('#queueLengthCount')).toHaveText('2');
+  await expect(display.locator('#joinUrl')).toContainText(`queue.html?location=`);
+});
+
+test('the estimated wait is shown in the line and to each user', async ({page, context}) => {
+  const {location} = await createQueue(page);
+  const user = await context.newPage();
+  await joinQueue(user, location);
+  await expect(user.locator('#wait')).toHaveText('estimating…');
+  await expect(user.locator('#people tbody td:nth-child(4)')).toHaveText(['now', 'estimating…']);
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.click('#current-user-done');
+  await expect(user.locator('#wait')).toHaveText('now');
+  await expect(page.locator('#people tbody td:nth-child(4)')).toHaveText(['now']);
+});
+
 test('invalid queue links go back to the home page', async ({page}) => {
   await page.goto('/queue.html?location=nonsense');
   await page.waitForURL(/\/$/);

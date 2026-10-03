@@ -12,13 +12,16 @@ A queue anyone can start in seconds, that works on any phone browser and respect
 
 ## Using it
 
-1. **Create a queue**: open the site and tap "Create new queue at my location". The queue is named after where you stand, as `lat,lon` rounded to 4 decimals (about 11 m). A second admin at the same spot joins the existing queue instead of making a duplicate. You land on the admin page, and **its URL is the admin password**, so keep it private.
+1. **Create a queue**: open the site, pick when the queue closes (24 hours from now by default, up to a year), and tap "Create new queue at my location". The queue is named after where you stand, as `lat,lon` rounded to 4 decimals (about 11 m). A second admin at the same spot joins the existing queue instead of making a duplicate. You land on the admin page, and **its URL is the admin password**, so keep it private.
 2. **Share it**: send the link shown on the admin page, or people can find it under "Nearby Queues" on the home page.
 3. **Join**: people tap "Join Queue" and get a ticket in order (`A001`, `A002`, … `A999`, then `B000`, …) and a live position. Everyone, admin included, sees the line in order with when each ticket joined.
 4. **Serve**: the admin taps "Current user done" to serve whoever is at the head of the queue. Everyone's position updates instantly.
 5. **Message**: the admin can post a message, such as what the queue is for or what to bring, which everyone in the queue sees.
+6. **Display mode**: the admin page links to a full-screen display for a tablet, TV or laptop facing the line. It shows who is being served, the next few tickets (`?top=5` by default), the admin message, the estimated wait and the join link. It needs no password, so it is safe to leave on a public screen.
 
-The location links open the phone's maps app (Apple Maps on iOS, the default `geo:` app on Android), with an OpenStreetMap link as a fallback. Queues expire 24 hours after they are created.
+Everyone sees an **estimated wait**: per ticket in the line, for themselves, and for someone joining now. It is measured from how fast the admin actually serves people (see [ADR 0003](docs/adr/0003-wait-time-estimate.md)), and reads "estimating…" until the first person is served.
+
+The location links open the phone's maps app (Apple Maps on iOS, the default `geo:` app on Android), with an OpenStreetMap link as a fallback. Queues close at the time their admin picked.
 
 ## Running it
 
@@ -103,17 +106,17 @@ sequenceDiagram
   S-->>U: data: {length: 1, position: 1}
 ```
 
-| Method & path                               | Who    | Purpose                                                     |
-| ------------------------------------------- | ------ | ----------------------------------------------------------- |
-| `GET /api/queues?near=<lat,lon>`            | anyone | the five nearest queues within 100 km                       |
-| `POST /api/queues` `{location}`             | anyone | create a queue; returns `{location, password}`, or 409      |
-| `POST /api/queues/{loc}/users`              | anyone | join; returns `{userId, key}`                               |
-| `DELETE /api/queues/{loc}/users/{id}`       | user   | leave, with the join `key` as bearer token                  |
-| `GET /api/queues/{loc}/events?user=&token=` | anyone | SSE stream of `{length, message, people, position?, head?}` |
-| `GET /api/queues/{loc}/admin`               | admin  | 204 if the bearer token is the queue's password             |
-| `POST /api/queues/{loc}/next`               | admin  | serve the head of the queue                                 |
-| `PUT /api/queues/{loc}/message` `{message}` | admin  | set the admin message                                       |
-| `GET /healthz`                              | probes | liveness and readiness                                      |
+| Method & path                               | Who    | Purpose                                                                                             |
+| ------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------- |
+| `GET /api/queues?near=<lat,lon>`            | anyone | the five nearest queues within 100 km                                                               |
+| `POST /api/queues` `{location, closes?}`    | anyone | create a queue closing at `closes` (RFC 3339, default 24 h); returns `{location, password}`, or 409 |
+| `POST /api/queues/{loc}/users`              | anyone | join; returns `{userId, key}`                                                                       |
+| `DELETE /api/queues/{loc}/users/{id}`       | user   | leave, with the join `key` as bearer token                                                          |
+| `GET /api/queues/{loc}/events?user=&token=` | anyone | SSE stream of `{length, message, people, closes, serviceSeconds?, position?, head?}`                |
+| `GET /api/queues/{loc}/admin`               | admin  | 204 if the bearer token is the queue's password                                                     |
+| `POST /api/queues/{loc}/next`               | admin  | serve the head of the queue                                                                         |
+| `PUT /api/queues/{loc}/message` `{message}` | admin  | set the admin message                                                                               |
+| `GET /healthz`                              | probes | liveness and readiness                                                                              |
 
 ## Development
 

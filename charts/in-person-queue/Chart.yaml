@@ -2,8 +2,8 @@ apiVersion: v2
 name: in-person-queue
 description: Location-based real-time queues. One small Go binary with an embedded database.
 type: application
-version: 0.3.1
-appVersion: '3.2.0'
+version: 0.3.2
+appVersion: '3.3.0'
 home: https://github.com/barakplasma/in-person-queue
 sources:
   - https://github.com/barakplasma/in-person-queue

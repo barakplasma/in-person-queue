@@ -33,7 +33,14 @@ const (
 	startMarker = "Start Queue"
 )
 
-var queueTTL = 24 * time.Hour // a var so tests can shorten it
+var queueTTL = 24 * time.Hour // how long a queue stays open unless its admin picks a time; a var so tests can shorten it
+
+const (
+	maxOpen = 366 * 24 * time.Hour // the latest closing time an admin can pick
+	// Weight of the newest service time in the moving average: recent serves count most,
+	// so the estimate follows a speed change within a few serves.
+	serviceSmoothing = 0.3
+)
 
 var (
 	errInvalidLocation = errors.New("invalid location")
@@ -42,6 +49,7 @@ var (
 	errFull            = errors.New("this queue is full")
 	errUnauthorized    = errors.New("not authorized for this queue")
 	errTooManyQueues   = errors.New("too many queues on this server, try again later")
+	errInvalidCloses   = errors.New("the closing time must be in the future, and within a year")
 )
 
 var locationRE = regexp.MustCompile(`^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$`)
@@ -68,7 +76,9 @@ func round4(x float64) float64 {
 // Data model (see docs/adr/0002-embedded-database.md), stored by Redka in SQLite:
 //
 //	queue:<location>  hash:       password (sha256), message, seq (last ticket number), expires (unix ms),
-//	                              joined:<user id> (unix ms) for everyone in line
+//	                              joined:<user id> (unix ms) for everyone in line,
+//	                              served (unix ms: the last serve, or when the line last became busy),
+//	                              service (ms: moving average of the time to serve one person)
 //	users:<location>  sorted set: user id -> ticket number, so rank = position in line
 //
 // Expiry is ours (the expires field + Sweep), not Redka's key TTL: in redka v1.0.1, writing to a key whose
@@ -84,6 +94,10 @@ type View struct {
 	Position *int     `json:"position,omitempty"` // 1-based; only sent to a user, null if not in the queue
 	Head     *string  `json:"head,omitempty"`     // only sent to the admin
 	People   []Person `json:"people"`             // everyone in line, in order
+	Closes   int64    `json:"closes"`             // unix ms
+	// Estimated time to serve one person (see estimateService), 0 until the admin has served someone.
+	// Someone at position p waits about (p-1) × this; someone joining now, about length × this.
+	ServiceSeconds float64 `json:"serviceSeconds,omitzero"`
 }
 
 type Person struct {
@@ -166,8 +180,14 @@ func hash(password string) []byte {
 	return h[:]
 }
 
-// Create makes a queue and returns its admin password.
-func (s *Store) Create(location string) (string, error) {
+// Create makes a queue that closes at closes (zero: after queueTTL) and returns its admin password.
+func (s *Store) Create(location string, closes time.Time) (string, error) {
+	if closes.IsZero() {
+		closes = time.Now().Add(queueTTL)
+	}
+	if time.Until(closes) <= 0 || time.Until(closes) > maxOpen {
+		return "", errInvalidCloses
+	}
 	password := rand.Text()
 	return password, s.update(location, func(tx *redka.Tx) error {
 		if err := exists(tx, location); err == nil {
@@ -188,7 +208,7 @@ func (s *Store) Create(location string) (string, error) {
 			"password":              hash(password),
 			"message":               "",
 			"seq":                   0,
-			"expires":               strconv.FormatInt(time.Now().Add(queueTTL).UnixMilli(), 10),
+			"expires":               strconv.FormatInt(closes.UnixMilli(), 10),
 			"joined:" + startMarker: now(),
 		}); err != nil {
 			return err
@@ -227,6 +247,11 @@ func (s *Store) Join(location string) (id, key string, err error) {
 		}
 		if n >= maxUsers {
 			return errFull
+		}
+		if n == 0 { // the line was idle: service time counts from now, not from the last serve
+			if _, err := tx.Hash().Set(metaKey(location), "served", now()); err != nil {
+				return err
+			}
 		}
 		seq, err := tx.Hash().Incr(metaKey(location), "seq", 1)
 		if err != nil {
@@ -300,8 +325,40 @@ func (s *Store) Next(location string) error {
 		if err != nil || len(head) == 0 {
 			return err
 		}
+		if head[0].Elem.String() != startMarker { // serving the marker only starts the queue
+			if err := estimateService(tx, location); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Hash().Set(metaKey(location), "served", now()); err != nil {
+			return err
+		}
 		return remove(tx, location, head[0].Elem.String())
 	})
+}
+
+// estimateService folds the time since the last serve into the average time to serve one person.
+//
+// Queueing theory: with one server, the wait at position p is the service time of the p-1 people ahead,
+// so by Little's law (L = λW) the estimate only needs the service rate. That rate is measured, not assumed:
+// an exponentially weighted moving average of the time between serves, counted only while people were
+// waiting (Join restarts the clock when the line was empty), so idle time doesn't inflate it.
+func estimateService(tx *redka.Tx, location string) error {
+	v, err := tx.Hash().GetMany(metaKey(location), "served", "service")
+	if err != nil {
+		return err
+	}
+	served, err := strconv.ParseInt(v["served"].String(), 10, 64)
+	if err != nil {
+		return nil // never served yet: no interval to measure
+	}
+	interval := float64(time.Now().UnixMilli() - served)
+	avg, err := strconv.ParseFloat(v["service"].String(), 64)
+	if err == nil {
+		interval = serviceSmoothing*interval + (1-serviceSmoothing)*avg
+	}
+	_, err = tx.Hash().Set(metaKey(location), "service", strconv.FormatFloat(interval, 'f', 0, 64))
+	return err
 }
 
 func (s *Store) SetMessage(location, message string) error {
@@ -325,11 +382,15 @@ func (s *Store) View(location, user string, admin bool) View {
 		if err := exists(tx, location); err != nil {
 			return err
 		}
-		message, err := tx.Hash().Get(metaKey(location), "message")
+		meta, err := tx.Hash().GetMany(metaKey(location), "message", "expires", "service")
 		if err != nil {
 			return err
 		}
-		v.Message = message.String()
+		v.Message = meta["message"].String()
+		v.Closes, _ = strconv.ParseInt(meta["expires"].String(), 10, 64)
+		if ms, err := strconv.ParseFloat(meta["service"].String(), 64); err == nil {
+			v.ServiceSeconds = math.Round(ms) / 1000
+		}
 		line, err := tx.ZSet().Range(usersKey(location), 0, maxUsers-1)
 		if err != nil {
 			return err
