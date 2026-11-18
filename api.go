@@ -113,7 +113,7 @@ func newHandler(s *Store, static fs.FS) http.Handler {
 		streamEvents(w, r, s, location, query.Get("user"), isAdmin)
 	})
 
-	return securityHeaders(mux)
+	return instrument(mux, securityHeaders(mux))
 }
 
 // streamEvents sends the queue's View now and after every change, until the client goes away.
