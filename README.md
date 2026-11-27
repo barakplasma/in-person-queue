@@ -76,6 +76,7 @@ Limits: 1,000 people waiting per queue, 25,999 tickets per queue (`A001`…`Z999
 - **Inspect** the data with `sqlite3 queues.db`; it's a normal SQLite file.
 - **Back up** with `sqlite3 queues.db ".backup copy.db"` while the server is running, or continuously with [Litestream](https://litestream.io).
 - **Health**: `GET /healthz`. The binary also has a `-healthcheck` flag for Docker's `HEALTHCHECK`.
+- **Telemetry**: set any `OTEL_EXPORTER_OTLP_*ENDPOINT` (plus `OTEL_SERVICE_NAME` etc.) to export traces, metrics and `slog` logs over OTLP/HTTP; with none set nothing is exported. Spans are named by route pattern, `/healthz` is not traced, and the `?token=` query on the events stream is hidden from spans.
 - **Shutdown**: `SIGTERM` closes live connections and waits for in-flight requests. Every change is committed before it is acknowledged, so a crash loses nothing.
 
 ## How it works

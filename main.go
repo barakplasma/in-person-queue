@@ -48,6 +48,11 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	shutdownTelemetry, err := setupTelemetry(ctx)
+	if err != nil {
+		slog.Error("telemetry disabled", "error", err) // fail open: the service still serves
+		shutdownTelemetry = func(context.Context) error { return nil }
+	}
 	static, _ := fs.Sub(clientFS, "client")
 	srv := &http.Server{
 		Addr:              ":" + port,
@@ -87,4 +92,10 @@ func main() {
 		os.Exit(1)
 	}
 	<-shutdownDone // close the database only once no request can use it any more
+	// ctx is already cancelled here, so flush telemetry on a fresh one.
+	flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := shutdownTelemetry(flushCtx); err != nil {
+		slog.Error("telemetry flush", "error", err)
+	}
 }
