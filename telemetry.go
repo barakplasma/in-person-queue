@@ -41,7 +41,9 @@ func setupTelemetry(ctx context.Context) (func(context.Context) error, error) {
 	if !otelEnabled() {
 		return func(context.Context) error { return nil }, nil
 	}
-	res, err := resource.New(ctx, resource.WithFromEnv(), resource.WithTelemetrySDK(), resource.WithProcess())
+	res, err := resource.New(ctx, resource.WithFromEnv(), resource.WithTelemetrySDK())
+	// No resource.WithProcess(): its owner detector needs a user entry (cgo or $USER), which the
+	// minimal image does not have, and a detector error disables telemetry altogether.
 	if err != nil {
 		return nil, err
 	}
