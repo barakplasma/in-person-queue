@@ -1,6 +1,6 @@
 module github.com/barakplasma/in-person-queue
 
-go 1.27.1
+go 1.27.4
 
 require (
 	github.com/nalgeon/redka v1.0.1
